@@ -17,9 +17,6 @@ app.use(cors({
 
 const PORT = process.env.PORT || 3000;
 
-import word from './routes/word.js';
-app.use('/word', word);
-
 app.get('/', (req, res) => {
 	res.send('Hello, World!');
 });
