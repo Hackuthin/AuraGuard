@@ -1,390 +1,1207 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport"
-		  content="width=device-width, initial-scale=1.0">
-	<title>AuraGuard - Phone Call</title>
-	<style>
-		* {
-			margin: 0;
-			padding: 0;
-			box-sizing: border-box;
-		}
-
-		body {
-			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-			background: #1c1c1e;
-			min-height: 100vh;
-			margin: 0;
-			padding: 0;
-			overflow-x: hidden;
-		}
-
-		.phone-container {
-			width: 100%;
-			min-height: 100vh;
-			background: #1c1c1e;
-			padding: 20px;
-			position: relative;
-			display: flex;
-			flex-direction: column;
-		}
-
-		.call-screen {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			padding-top: 40px;
-			color: #fff;
-			flex: 1;
-			justify-content: space-between;
-			max-width: 600px;
-			margin: 0 auto;
-			width: 100%;
-		}
-
-		.phone-number {
-			font-size: clamp(24px, 5vw, 32px);
-			font-weight: 300;
-			letter-spacing: 2px;
-			margin-bottom: 10px;
-		}
-
-		.call-status {
-			color: #64d2ff;
-			font-size: clamp(14px, 3vw, 18px);
-			margin-bottom: 30px;
-		}
-
-		.contact-avatar {
-			width: clamp(100px, 20vw, 140px);
-			height: clamp(100px, 20vw, 140px);
-			border-radius: 50%;
-			background: #fff;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			margin-bottom: 20px;
-			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-		}
-
-		.contact-avatar svg {
-			width: 60%;
-			height: 60%;
-			fill: #999;
-		}
-
-		.contact-name {
-			font-size: clamp(28px, 6vw, 36px);
-			font-weight: 500;
-			margin-bottom: 40px;
-		}
-
-		.action-buttons {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: clamp(15px, 4vw, 30px);
-			width: 100%;
-			max-width: 500px;
-			padding: 20px;
-			margin-bottom: 30px;
-		}
-
-		.action-btn {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 8px;
-			background: none;
-			border: none;
-			color: #fff;
-			cursor: pointer;
-			transition: transform 0.2s;
-		}
-
-		.action-btn:active {
-			transform: scale(0.95);
-		}
-
-		.action-btn-icon {
-			width: clamp(50px, 12vw, 70px);
-			height: clamp(50px, 12vw, 70px);
-			border-radius: 50%;
-			background: rgba(255, 255, 255, 0.15);
-			backdrop-filter: blur(10px);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			transition: background 0.3s;
-		}
-
-		.action-btn:hover .action-btn-icon {
-			background: rgba(255, 255, 255, 0.25);
-		}
-
-		.action-btn-icon svg {
-			width: clamp(24px, 6vw, 32px);
-			height: clamp(24px, 6vw, 32px);
-			fill: #fff;
-		}
-
-		.action-btn-label {
-			font-size: clamp(11px, 2.5vw, 14px);
-			color: #fff;
-		}
-
-		.call-controls {
-			display: flex;
-			justify-content: space-around;
-			align-items: center;
-			width: 100%;
-			max-width: 500px;
-			padding: 20px;
-			margin-bottom: 30px;
-		}
-
-		.call-control-btn {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 8px;
-			background: none;
-			border: none;
-			color: #fff;
-			cursor: pointer;
-			transition: transform 0.2s;
-		}
-
-		.call-control-btn:active {
-			transform: scale(0.95);
-		}
-
-		.call-control-icon {
-			width: clamp(60px, 14vw, 75px);
-			height: clamp(60px, 14vw, 75px);
-			border-radius: 50%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			transition: all 0.3s;
-		}
-
-		.record-icon {
-			background: rgba(255, 255, 255, 0.15);
-		}
-
-		.end-call-icon {
-			background: #ff3b30;
-			width: clamp(70px, 16vw, 85px);
-			height: clamp(70px, 16vw, 85px);
-		}
-
-		.speaker-icon {
-			background: rgba(255, 255, 255, 0.15);
-		}
-
-		.call-control-icon svg {
-			width: clamp(28px, 7vw, 36px);
-			height: clamp(28px, 7vw, 36px);
-			fill: #fff;
-		}
-
-		.call-control-label {
-			font-size: clamp(11px, 2.5vw, 14px);
-			color: #fff;
-		}
-
-		@keyframes pulse {
-
-			0%,
-			100% {
-				opacity: 1;
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>AuraGuard - Phone Call</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
 			}
 
-			50% {
-				opacity: 0.5;
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+					Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				background: #1c1c1e;
+				min-height: 100vh;
+				margin: 0;
+				padding: 0;
+				overflow-x: hidden;
 			}
-		}
 
-		.calling {
-			animation: pulse 1.5s ease-in-out infinite;
-		}
+			.phone-container {
+				width: 100%;
+				min-height: 100vh;
+				background: #1c1c1e;
+				padding: 20px;
+				position: relative;
+				display: flex;
+				flex-direction: column;
+			}
 
-		/* Mobile responsive adjustments */
-		@media (max-width: 480px) {
 			.call-screen {
-				padding-top: 20px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				padding-top: 40px;
+				color: #fff;
+				flex: 1;
+				justify-content: space-between;
+				max-width: 600px;
+				margin: 0 auto;
+				width: 100%;
+			}
+
+			.phone-number {
+				font-size: clamp(24px, 5vw, 32px);
+				font-weight: 300;
+				letter-spacing: 2px;
+				margin-bottom: 10px;
+			}
+
+			.call-status {
+				color: #64d2ff;
+				font-size: clamp(14px, 3vw, 18px);
+				margin-bottom: 30px;
+				text-align: center;
+				transition: color 0.3s ease;
+			}
+
+			.call-status.waiting {
+				color: #ffa500;
+			}
+
+			.call-status.connected {
+				color: #4caf50;
+			}
+
+			.call-status.error {
+				color: #f44336;
+			}
+			.contact-avatar {
+				width: clamp(100px, 20vw, 140px);
+				height: clamp(100px, 20vw, 140px);
+				border-radius: 50%;
+				background: #fff;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin-bottom: 20px;
+				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+			}
+
+			.contact-avatar svg {
+				width: 60%;
+				height: 60%;
+				fill: #999;
 			}
 
 			.contact-name {
-				margin-bottom: 30px;
+				font-size: clamp(28px, 6vw, 36px);
+				font-weight: 500;
+				text-align: center;
+				margin-bottom: 40px;
+			}
+			.contact-name span {
+				font-size: clamp(14px, 3vw, 18px);
+				font-weight: 300;
+				color: #ccc;
+			}
+
+			.mic-indicator {
+				position: absolute;
+				top: 20px;
+				right: 20px;
+				width: 40px;
+				height: 40px;
+				border-radius: 50%;
+				background: rgba(76, 175, 80, 0.2);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				opacity: 0;
+				transition: opacity 0.3s;
+			}
+
+			.mic-indicator.active {
+				opacity: 1;
+				animation: micPulse 1.5s ease-in-out infinite;
+			}
+
+			.mic-indicator svg {
+				width: 20px;
+				height: 20px;
+				fill: #4caf50;
+			}
+
+			@keyframes micPulse {
+				0%,
+				100% {
+					transform: scale(1);
+					background: rgba(76, 175, 80, 0.2);
+				}
+				50% {
+					transform: scale(1.1);
+					background: rgba(76, 175, 80, 0.4);
+				}
 			}
 
 			.action-buttons {
-				gap: 20px;
-				padding: 10px;
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: clamp(15px, 4vw, 30px);
+				width: 100%;
+				max-width: 500px;
+				padding: 20px;
+				margin-bottom: 30px;
+			}
+
+			.action-btn {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 8px;
+				background: none;
+				border: none;
+				color: #fff;
+				cursor: pointer;
+				transition: transform 0.2s, opacity 0.3s;
+			}
+
+			.action-btn:active {
+				transform: scale(0.95);
+			}
+
+			.action-btn.disabled {
+				opacity: 0.3;
+				cursor: not-allowed;
+			}
+
+			.action-btn.muted {
+				opacity: 0.5;
+			}
+			.action-btn-icon {
+				width: clamp(50px, 12vw, 70px);
+				height: clamp(50px, 12vw, 70px);
+				border-radius: 50%;
+				background: rgba(255, 255, 255, 0.15);
+				backdrop-filter: blur(10px);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: background 0.3s;
+			}
+
+			.action-btn:hover .action-btn-icon {
+				background: rgba(255, 255, 255, 0.25);
+			}
+
+			.action-btn-icon svg {
+				width: clamp(24px, 6vw, 32px);
+				height: clamp(24px, 6vw, 32px);
+				fill: #fff;
+			}
+
+			.action-btn-label {
+				font-size: clamp(11px, 2.5vw, 14px);
+				color: #fff;
 			}
 
 			.call-controls {
-				padding: 10px;
+				display: flex;
+				justify-content: space-around;
+				align-items: center;
+				width: 100%;
+				max-width: 500px;
+				padding: 20px;
+				margin-bottom: 30px;
 			}
-		}
 
-		/* Tablet adjustments */
-		@media (min-width: 768px) {
-			.call-screen {
-				padding-top: 60px;
+			.call-control-btn {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 8px;
+				background: none;
+				border: none;
+				color: #fff;
+				cursor: pointer;
+				transition: transform 0.2s;
 			}
-		}
 
-		/* Large screen adjustments */
-		@media (min-width: 1024px) {
-			.phone-container {
+			.call-control-btn:active {
+				transform: scale(0.95);
+			}
+
+			.call-control-btn.disabled {
+				opacity: 0.3;
+				cursor: not-allowed;
+			}
+			.call-control-icon {
+				width: clamp(60px, 14vw, 75px);
+				height: clamp(60px, 14vw, 75px);
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
 				justify-content: center;
+				transition: all 0.3s;
 			}
 
-			.call-screen {
-				padding-top: 80px;
+			.record-icon {
+				background: rgba(255, 255, 255, 0.15);
 			}
-		}
-	</style>
-</head>
 
-<body>
-	<div class="phone-container">
-		<div class="call-screen">
-			<div class="phone-number">12 34 5678</div>
-			<div class="call-status calling">Calling...</div>
+			.end-call-icon {
+				background: #ff3b30;
+				width: clamp(70px, 16vw, 85px);
+				height: clamp(70px, 16vw, 85px);
+			}
 
-			<div class="contact-avatar">
+			.speaker-icon {
+				background: rgba(255, 255, 255, 0.15);
+			}
+
+			.call-control-icon svg {
+				width: clamp(28px, 7vw, 36px);
+				height: clamp(28px, 7vw, 36px);
+				fill: #fff;
+			}
+
+			.call-control-label {
+				font-size: clamp(11px, 2.5vw, 14px);
+				color: #fff;
+			}
+
+			.call-again-btn {
+				display: none;
+				background: #34c759;
+				border: none;
+				color: #fff;
+				font-size: clamp(16px, 4vw, 20px);
+				font-weight: 600;
+				padding: 16px 48px;
+				border-radius: 50px;
+				cursor: pointer;
+				margin-top: 20px;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+			}
+
+			.call-again-btn:hover {
+				background: #30b350;
+				transform: translateY(-2px);
+				box-shadow: 0 6px 16px rgba(52, 199, 89, 0.4);
+			}
+
+			.call-again-btn:active {
+				transform: translateY(0);
+				box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+			}
+
+			.call-again-btn.visible {
+				display: inline-block;
+			}
+
+			@keyframes pulse {
+				0%,
+				100% {
+					opacity: 1;
+				}
+
+				50% {
+					opacity: 0.5;
+				}
+			}
+
+			.calling {
+				animation: pulse 1.5s ease-in-out infinite;
+			}
+
+			/* Tap to enable audio overlay */
+			.audio-enable-overlay {
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: rgba(0, 0, 0, 0.8);
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				z-index: 9999;
+				opacity: 1;
+				transition: opacity 0.3s ease;
+			}
+
+			.audio-enable-overlay.hidden {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.tap-to-enable {
+				background: #34c759;
+				color: #fff;
+				font-size: clamp(18px, 4vw, 24px);
+				font-weight: 600;
+				padding: 20px 48px;
+				border-radius: 50px;
+				border: none;
+				cursor: pointer;
+				box-shadow: 0 6px 20px rgba(52, 199, 89, 0.4);
+				transition: all 0.3s ease;
+				animation: tapPulse 2s ease-in-out infinite;
+			}
+
+			.tap-to-enable:hover {
+				background: #30b350;
+				transform: scale(1.05);
+			}
+
+			.tap-to-enable:active {
+				transform: scale(0.95);
+			}
+
+			@keyframes tapPulse {
+				0%,
+				100% {
+					transform: scale(1);
+				}
+				50% {
+					transform: scale(1.05);
+				}
+			}
+
+			.enable-message {
+				color: #fff;
+				font-size: clamp(14px, 3vw, 16px);
+				margin-top: 20px;
+				opacity: 0.8;
+				text-align: center;
+				padding: 0 20px;
+			}
+
+			/* Mobile responsive adjustments */
+			@media (max-width: 480px) {
+				.call-screen {
+					padding-top: 20px;
+				}
+
+				.contact-name {
+					margin-bottom: 30px;
+				}
+
+				.action-buttons {
+					gap: 20px;
+					padding: 10px;
+				}
+
+				.call-controls {
+					padding: 10px;
+				}
+			}
+
+			/* Tablet adjustments */
+			@media (min-width: 768px) {
+				.call-screen {
+					padding-top: 60px;
+				}
+			}
+
+			/* Large screen adjustments */
+			@media (min-width: 1024px) {
+				.phone-container {
+					justify-content: center;
+				}
+
+				.call-screen {
+					padding-top: 80px;
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<!-- Audio enable overlay -->
+		<div class="audio-enable-overlay" id="audioEnableOverlay">
+			<button class="tap-to-enable" id="enableAudioBtn">
+				🔊 Tap to Enable Audio
+			</button>
+			<p class="enable-message">
+				Tap anywhere to enable audio and start your call
+			</p>
+		</div>
+
+		<div class="phone-container">
+			<!-- Microphone active indicator -->
+			<div class="mic-indicator" id="micIndicator">
 				<svg viewBox="0 0 24 24">
 					<path
-						  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+						d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
 				</svg>
 			</div>
 
-			<div class="contact-name">Nexlink</div>
+			<div class="call-screen">
+				<div class="phone-number">12 34 5678</div>
+				<div class="call-status calling">Calling...</div>
 
-			<div class="action-buttons">
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Mute</span>
+				<div class="contact-avatar">
+					<svg viewBox="0 0 24 24">
+						<path
+							d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+					</svg>
+				</div>
+
+				<div class="contact-name">
+					Nexlink
+					<br />
+					<span>(powered by AuraGuard)</span>
+				</div>
+
+				<button
+					class="call-again-btn"
+					id="callAgainBtn"
+					onclick="callAgain()">
+					📞 Call Again
 				</button>
 
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Keypad</span>
-				</button>
+				<div class="action-buttons">
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Mute</span>
+					</button>
 
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z" />
-							<path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Reminder</span>
-				</button>
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Keypad</span>
+					</button>
 
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Video call</span>
-				</button>
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z" />
+								<path
+									d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Reminder</span>
+					</button>
 
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Add call</span>
-				</button>
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Video call</span>
+					</button>
 
-				<button class="action-btn">
-					<div class="action-btn-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" />
-							<circle cx="12"
-									cy="12"
-									r="2.5" />
-						</svg>
-					</div>
-					<span class="action-btn-label">Contacts</span>
-				</button>
-			</div>
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Add call</span>
+					</button>
 
-			<div class="call-controls">
-				<button class="call-control-btn">
-					<div class="call-control-icon record-icon">
-						<svg viewBox="0 0 24 24">
-							<circle cx="12"
-									cy="12"
-									r="8" />
-						</svg>
-					</div>
-					<span class="call-control-label">Record</span>
-				</button>
+					<button class="action-btn">
+						<div class="action-btn-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" />
+								<circle cx="12" cy="12" r="2.5" />
+							</svg>
+						</div>
+						<span class="action-btn-label">Contacts</span>
+					</button>
+				</div>
 
-				<button class="call-control-btn"
-						onclick="endCall()">
-					<div class="call-control-icon end-call-icon">
-						<svg viewBox="0 0 24 24"
-							 style="transform: rotate(135deg);">
-							<path
-								  d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-						</svg>
-					</div>
-				</button>
+				<div class="call-controls">
+					<button class="call-control-btn">
+						<div class="call-control-icon record-icon">
+							<svg viewBox="0 0 24 24">
+								<circle cx="12" cy="12" r="8" />
+							</svg>
+						</div>
+						<span class="call-control-label">Record</span>
+					</button>
 
-				<button class="call-control-btn">
-					<div class="call-control-icon speaker-icon">
-						<svg viewBox="0 0 24 24">
-							<path
-								  d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-						</svg>
-					</div>
-					<span class="call-control-label">Speaker</span>
-				</button>
+					<button class="call-control-btn" onclick="endCall()">
+						<div class="call-control-icon end-call-icon">
+							<svg
+								viewBox="0 0 24 24"
+								style="transform: rotate(135deg)">
+								<path
+									d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+							</svg>
+						</div>
+					</button>
+
+					<button class="call-control-btn">
+						<div class="call-control-icon speaker-icon">
+							<svg viewBox="0 0 24 24">
+								<path
+									d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+							</svg>
+						</div>
+						<span class="call-control-label">Speaker</span>
+					</button>
+				</div>
 			</div>
 		</div>
-	</div>
 
-	<script>
-		function endCall() {
-			document.querySelector('.call-status').textContent = 'Call Ended';
-			document.querySelector('.call-status').classList.remove('calling');
-			setTimeout(() => {
-				alert('Call ended');
-			}, 500);
-		}
+		<script>
+			let ws = null;
+			let callerId = null;
+			let callStatus = "disconnected"; // disconnected, waiting, connected, ended
+			let audioContext = null;
+			let mediaStream = null;
+			let isRecording = false;
 
-		// Simulate call connection after 3 seconds
-		setTimeout(() => {
-			const status = document.querySelector('.call-status');
-			status.textContent = 'Connected';
-			status.classList.remove('calling');
-		}, 3000);
-	</script>
-</body>
+			// Audio playback queue
+			let audioQueue = [];
+			let isPlayingAudio = false;
 
+			// Ringing audio
+			let ringingAudio = null;
+			let userInteracted = false;
+			let pendingRinging = false; // Flag to play ringing after user interaction
+			let audioPlaybackFailed = false;
+			let retryAttempts = 0;
+			const MAX_RETRY_ATTEMPTS = 10;
+
+			// Initialize ringing audio
+			function initRingingAudio() {
+				if (!ringingAudio) {
+					ringingAudio = new Audio("/calling.mp3");
+					ringingAudio.loop = true;
+					ringingAudio.volume = 0.5; // Set volume to 50%
+				}
+			}
+
+			// Show audio enable overlay
+			function showAudioEnableOverlay() {
+				const overlay = document.getElementById("audioEnableOverlay");
+				const message = document.querySelector(".enable-message");
+				
+				if (overlay) {
+					overlay.style.display = "flex";
+					overlay.classList.remove("hidden");
+					
+					// Update message based on retry attempts
+					if (retryAttempts > 0 && message) {
+						message.textContent = `Audio couldn't play. Please tap again to enable audio (Attempt ${retryAttempts + 1}/${MAX_RETRY_ATTEMPTS})`;
+					}
+				}
+			}
+
+			// Hide audio enable overlay
+			function hideAudioEnableOverlay() {
+				const overlay = document.getElementById("audioEnableOverlay");
+				if (overlay) {
+					overlay.classList.add("hidden");
+					setTimeout(() => {
+						overlay.style.display = "none";
+					}, 300);
+				}
+			}
+
+			// Play ringing sound
+			async function playRinging() {
+				initRingingAudio();
+
+				if (!userInteracted) {
+					// Mark that we want to play ringing once user interacts
+					pendingRinging = true;
+					console.log("Waiting for user interaction to play ringing...");
+					showAudioEnableOverlay();
+					return;
+				}
+
+				if (ringingAudio && ringingAudio.paused) {
+					try {
+						await ringingAudio.play();
+						console.log("Ringing audio started successfully");
+						pendingRinging = false;
+						audioPlaybackFailed = false;
+						retryAttempts = 0;
+						hideAudioEnableOverlay();
+					} catch (error) {
+						console.error("Error playing ringing audio:", error);
+						audioPlaybackFailed = true;
+						pendingRinging = true;
+						retryAttempts++;
+						
+						// Reset user interaction flag and show overlay again
+						if (retryAttempts < MAX_RETRY_ATTEMPTS) {
+							userInteracted = false;
+							showAudioEnableOverlay();
+							console.log(`Audio playback failed. Retry attempt ${retryAttempts}/${MAX_RETRY_ATTEMPTS}. Please interact with the page again.`);
+							
+							// Re-add interaction listeners for next attempt
+							if (window.addInteractionListeners) {
+								setTimeout(() => {
+									window.addInteractionListeners();
+								}, 100);
+							}
+						} else {
+							console.error("Max retry attempts reached. Audio playback disabled.");
+							pendingRinging = false;
+							hideAudioEnableOverlay();
+						}
+					}
+				}
+			}
+
+			// Stop ringing sound
+			function stopRinging() {
+				pendingRinging = false; // Cancel pending ringing
+				if (ringingAudio && !ringingAudio.paused) {
+					ringingAudio.pause();
+					ringingAudio.currentTime = 0;
+					console.log("Ringing audio stopped");
+				}
+			}
+
+			// Enable audio on first user interaction
+			async function enableAudioOnInteraction() {
+				userInteracted = true;
+				console.log(`User interaction detected (attempt ${retryAttempts + 1})`);
+
+				// If ringing was pending, try to play it now
+				if (pendingRinging && callStatus === "waiting") {
+					await playRinging();
+				} else {
+					// Just hide overlay if no pending ringing
+					hideAudioEnableOverlay();
+				}
+			} // Initialize WebSocket connection
+			function initializeCall() {
+				const protocol =
+					window.location.protocol === "https:" ? "wss:" : "ws:";
+				ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+				ws.onopen = () => {
+					console.log("WebSocket connected");
+					updateCallStatus("waiting", "Waiting for operator...");
+				};
+
+				ws.onmessage = async (event) => {
+					try {
+						const data = JSON.parse(event.data);
+
+						// Check if this is an AI audio response
+						if (
+							data.serverContent &&
+							data.serverContent.modelTurn
+						) {
+							const parts = data.serverContent.modelTurn.parts;
+
+							for (const part of parts) {
+								if (
+									part.inlineData &&
+									part.inlineData.mimeType.startsWith(
+										"audio/"
+									)
+								) {
+									console.log(
+										"Received audio response from AI"
+									);
+									await playAudioResponse(
+										part.inlineData.data
+									);
+								}
+
+								if (part.text) {
+									console.log(`AI: ${part.text}`);
+								}
+							}
+						} else {
+							// Handle other message types
+							handleServerMessage(data);
+						}
+					} catch (error) {
+						// Not JSON, log it
+						console.log("Received non-JSON message:", event.data);
+					}
+				};
+				ws.onclose = () => {
+					console.log("WebSocket disconnected");
+					updateCallStatus("disconnected", "Call Disconnected");
+					stopAudioCapture();
+				};
+
+				ws.onerror = (error) => {
+					console.error("WebSocket error:", error);
+					updateCallStatus("error", "Connection Error");
+				};
+			}
+
+			// Handle messages from server
+			function handleServerMessage(data) {
+				console.log("Server message:", data);
+
+				switch (data.type) {
+					case "waiting":
+						callerId = data.callerId;
+						updateCallStatus(
+							"waiting",
+							data.message || "Waiting for operator..."
+						);
+						break;
+
+					case "accepted":
+						updateCallStatus("connected", "Connected");
+						startAudioCapture();
+						break;
+
+					case "rejected":
+						console.log("Call rejected:", data.message);
+						updateCallStatus(
+							"rejected",
+							data.message || "Call Rejected"
+						);
+						stopAudioCapture();
+						// Close WebSocket after showing rejection message
+						setTimeout(() => {
+							if (ws) {
+								ws.close();
+								ws = null;
+							}
+						}, 2000);
+						break;
+
+					case "status":
+						console.log("Status:", data.message);
+						break;
+
+					case "error":
+						console.error("Error:", data.message);
+						updateCallStatus("error", data.message);
+						break;
+
+					default:
+						console.log("Unknown message type:", data.type);
+				}
+			}
+
+			// Update UI based on call status
+			function updateCallStatus(status, message) {
+				callStatus = status;
+				const statusElement = document.querySelector(".call-status");
+				const callAgainBtn = document.getElementById("callAgainBtn");
+
+				// Remove all status classes
+				statusElement.classList.remove(
+					"calling",
+					"waiting",
+					"connected",
+					"error"
+				);
+
+				// Hide call again button by default
+				callAgainBtn.classList.remove("visible");
+
+				switch (status) {
+					case "waiting":
+						statusElement.textContent = message;
+						statusElement.classList.add("waiting", "calling");
+						disableActionButtons(true);
+						// Start playing ringing sound
+						playRinging();
+						break;
+
+					case "connected":
+						statusElement.textContent = message;
+						statusElement.classList.add("connected");
+						disableActionButtons(false);
+						// Stop ringing when connected
+						stopRinging();
+						break;
+
+					case "rejected":
+						statusElement.textContent = message;
+						statusElement.classList.add("error");
+						disableActionButtons(true);
+						// Stop ringing when rejected
+						stopRinging();
+						// Show call again button when call is rejected
+						callAgainBtn.classList.add("visible");
+						break;
+
+					case "ended":
+					case "disconnected":
+						statusElement.textContent = message;
+						statusElement.classList.add("error");
+						disableActionButtons(true);
+						// Stop ringing when call ends
+						stopRinging();
+						// Show call again button when call ends
+						callAgainBtn.classList.add("visible");
+						break;
+
+					case "error":
+						statusElement.textContent = message;
+						statusElement.classList.add("error");
+						disableActionButtons(true);
+						// Stop ringing on error
+						stopRinging();
+						// Show call again button on error too
+						callAgainBtn.classList.add("visible");
+						break;
+
+					default:
+						statusElement.textContent = message;
+						// Stop ringing for any other status
+						stopRinging();
+				}
+			} // Disable/enable action buttons based on connection status
+			function disableActionButtons(disabled) {
+				const actionButtons = document.querySelectorAll(".action-btn");
+				const controlButtons =
+					document.querySelectorAll(".call-control-btn");
+
+				actionButtons.forEach((btn) => {
+					if (disabled) {
+						btn.classList.add("disabled");
+					} else {
+						btn.classList.remove("disabled");
+					}
+				});
+
+				controlButtons.forEach((btn, index) => {
+					// Keep end call button always enabled
+					if (index !== 1) {
+						// Middle button is end call
+						if (disabled) {
+							btn.classList.add("disabled");
+						} else {
+							btn.classList.remove("disabled");
+						}
+					}
+				});
+			}
+
+			// Start capturing audio from microphone
+			async function startAudioCapture() {
+				try {
+					mediaStream = await navigator.mediaDevices.getUserMedia({
+						audio: {
+							echoCancellation: true,
+							noiseSuppression: true,
+							sampleRate: 16000
+						}
+					});
+
+					audioContext = new (window.AudioContext ||
+						window.webkitAudioContext)({
+						sampleRate: 16000
+					});
+
+					const source =
+						audioContext.createMediaStreamSource(mediaStream);
+					const processor = audioContext.createScriptProcessor(
+						4096,
+						1,
+						1
+					);
+
+					source.connect(processor);
+					processor.connect(audioContext.destination);
+
+					processor.onaudioprocess = (e) => {
+						if (
+							ws &&
+							ws.readyState === WebSocket.OPEN &&
+							callStatus === "connected"
+						) {
+							const inputData = e.inputBuffer.getChannelData(0);
+
+							// Check if there's actual audio (not just silence)
+							const hasAudio = checkForAudio(inputData);
+							updateMicIndicator(hasAudio);
+
+							const pcmData = convertFloat32ToInt16(inputData);
+							const base64Data = arrayBufferToBase64(
+								pcmData.buffer
+							);
+							ws.send(base64Data);
+						}
+					};
+
+					isRecording = true;
+					console.log("Audio capture started");
+				} catch (error) {
+					console.error("Error starting audio capture:", error);
+					alert(
+						"Failed to access microphone. Please allow microphone access and try again."
+					);
+				}
+			}
+
+			// Stop audio capture
+			function stopAudioCapture() {
+				if (mediaStream) {
+					mediaStream.getTracks().forEach((track) => track.stop());
+					mediaStream = null;
+				}
+
+				if (audioContext) {
+					audioContext.close();
+					audioContext = null;
+				}
+
+				isRecording = false;
+				console.log("Audio capture stopped");
+			}
+
+			// Convert Float32 to Int16 PCM
+			function convertFloat32ToInt16(float32Array) {
+				const int16Array = new Int16Array(float32Array.length);
+				for (let i = 0; i < float32Array.length; i++) {
+					const s = Math.max(-1, Math.min(1, float32Array[i]));
+					int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+				}
+				return int16Array;
+			}
+
+			// Convert ArrayBuffer to Base64
+			function arrayBufferToBase64(buffer) {
+				let binary = "";
+				const bytes = new Uint8Array(buffer);
+				const len = bytes.byteLength;
+				for (let i = 0; i < len; i++) {
+					binary += String.fromCharCode(bytes[i]);
+				}
+				return btoa(binary);
+			}
+
+			// Check if audio buffer has sound (not silence)
+			function checkForAudio(buffer, threshold = 0.01) {
+				for (let i = 0; i < buffer.length; i++) {
+					if (Math.abs(buffer[i]) > threshold) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			// Update microphone indicator
+			let micIndicatorTimeout = null;
+			function updateMicIndicator(isActive) {
+				const indicator = document.getElementById("micIndicator");
+
+				if (isActive) {
+					indicator.classList.add("active");
+
+					// Clear existing timeout
+					if (micIndicatorTimeout) {
+						clearTimeout(micIndicatorTimeout);
+					}
+
+					// Hide indicator after 200ms of no audio
+					micIndicatorTimeout = setTimeout(() => {
+						indicator.classList.remove("active");
+					}, 200);
+				}
+			}
+
+			// Play audio response from AI
+			async function playAudioResponse(base64Audio) {
+				// Convert base64 to ArrayBuffer
+				const binaryString = atob(base64Audio);
+				const bytes = new Uint8Array(binaryString.length);
+				for (let i = 0; i < binaryString.length; i++) {
+					bytes[i] = binaryString.charCodeAt(i);
+				}
+
+				// Add to queue
+				audioQueue.push(bytes.buffer);
+
+				// Start playing if not already playing
+				if (!isPlayingAudio) {
+					playNextAudio();
+				}
+			}
+
+			async function playNextAudio() {
+				if (audioQueue.length === 0) {
+					isPlayingAudio = false;
+					return;
+				}
+
+				isPlayingAudio = true;
+				const pcmData = audioQueue.shift();
+
+				try {
+					// Create an audio context for playback
+					const playbackContext = new (window.AudioContext ||
+						window.webkitAudioContext)({ sampleRate: 24000 });
+
+					// Convert Int16 PCM to Float32 for Web Audio API
+					const int16Array = new Int16Array(pcmData);
+					const float32Array = new Float32Array(int16Array.length);
+
+					for (let i = 0; i < int16Array.length; i++) {
+						float32Array[i] =
+							int16Array[i] /
+							(int16Array[i] < 0 ? 0x8000 : 0x7fff);
+					}
+
+					// Create an audio buffer
+					const audioBuffer = playbackContext.createBuffer(
+						1,
+						float32Array.length,
+						playbackContext.sampleRate
+					);
+					audioBuffer.getChannelData(0).set(float32Array);
+
+					// Create a buffer source and play
+					const source = playbackContext.createBufferSource();
+					source.buffer = audioBuffer;
+					source.connect(playbackContext.destination);
+
+					source.onended = () => {
+						playbackContext.close();
+						playNextAudio();
+					};
+
+					source.start(0);
+					console.log("Playing AI audio response");
+				} catch (error) {
+					console.error("Error playing audio:", error);
+					playNextAudio();
+				}
+			}
+
+			// End call
+			function endCall() {
+				updateCallStatus("ended", "Call Ended");
+
+				if (ws) {
+					ws.close();
+					ws = null;
+				}
+
+				stopAudioCapture();
+
+				setTimeout(() => {
+					// Could redirect or show call summary
+					console.log("Call ended. Call ID:", callerId);
+				}, 500);
+			}
+
+			// Call again function
+			function callAgain() {
+				console.log("Initiating new call...");
+
+				// Reset state
+				callerId = null;
+				callStatus = "disconnected";
+
+				// Hide the call again button
+				const callAgainBtn = document.getElementById("callAgainBtn");
+				callAgainBtn.classList.remove("visible");
+
+				// Update status
+				updateCallStatus("disconnected", "Connecting...");
+
+				// Clean up previous connection if any
+				if (ws) {
+					ws.close();
+					ws = null;
+				}
+
+				stopAudioCapture();
+
+				// Initialize new call
+				setTimeout(() => {
+					initializeCall();
+				}, 300);
+			}
+
+			// Toggle mute
+			function toggleMute(event) {
+				// Don't toggle if disabled
+				if (event.currentTarget.classList.contains("disabled")) {
+					return;
+				}
+
+				if (mediaStream && callStatus === "connected") {
+					const audioTrack = mediaStream.getAudioTracks()[0];
+					if (audioTrack) {
+						audioTrack.enabled = !audioTrack.enabled;
+						const muteBtn = event.currentTarget;
+
+						if (audioTrack.enabled) {
+							muteBtn.classList.remove("muted");
+							console.log("Unmuted");
+						} else {
+							muteBtn.classList.add("muted");
+							console.log("Muted");
+						}
+					}
+				}
+			}
+
+			// Initialize call on page load
+			window.addEventListener("DOMContentLoaded", () => {
+				console.log("Initializing call...");
+
+				// Set initial UI state
+				updateCallStatus("disconnected", "Connecting...");
+
+				// Initialize WebSocket connection
+				initializeCall();
+
+				// Set up mute button (first action button)
+				const muteBtn = document.querySelector(".action-btn");
+				if (muteBtn) {
+					muteBtn.addEventListener("click", toggleMute);
+				}
+
+				// Disable all buttons initially
+				disableActionButtons(true);
+
+				// Function to add interaction listeners (can be called multiple times)
+				function addInteractionListeners() {
+					// Set up enable audio button
+					const enableAudioBtn = document.getElementById("enableAudioBtn");
+					if (enableAudioBtn) {
+						enableAudioBtn.removeEventListener("click", enableAudioOnInteraction);
+						enableAudioBtn.addEventListener("click", enableAudioOnInteraction);
+					}
+
+					// Add user interaction listeners to enable audio
+					// Listen for any click, touch, or keypress on the document
+					["click", "touchstart", "keydown"].forEach((eventType) => {
+						document.addEventListener(
+							eventType,
+							enableAudioOnInteraction,
+							{ once: true }
+						);
+					});
+				}
+
+				// Initial setup of interaction listeners
+				addInteractionListeners();
+
+				// Make it globally accessible so we can re-add listeners after failure
+				window.addInteractionListeners = addInteractionListeners;
+			}); // Clean up on page unload
+			window.addEventListener("beforeunload", () => {
+				if (ws) {
+					ws.close();
+				}
+				stopAudioCapture();
+				stopRinging();
+			});
+		</script>
+	</body>
 </html>

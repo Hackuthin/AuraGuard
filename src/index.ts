@@ -128,6 +128,15 @@ const acceptCaller = async (callerId: string) => {
 			message: 'Your call has been accepted. You are now connected to AI.'
 		}));
 
+		// Send initial greeting prompt to AI to introduce itself
+		setTimeout(() => {
+			if (caller.session) {
+				caller.session.sendRealtimeInput({
+					text: "Please introduce yourself to the caller. Say hello and let them know you're ready to assist them with their NexLink services."
+				});
+			}
+		}, 500);
+
 		console.log(`Caller ${callerId} accepted and connected to AI`);
 		return true;
 	} catch (error) {
@@ -136,6 +145,44 @@ const acceptCaller = async (callerId: string) => {
 			type: 'error',
 			message: 'Failed to connect to AI'
 		}));
+		return false;
+	}
+}
+
+// Reject a caller and close their connection
+const rejectCaller = (callerId: string) => {
+	const caller = callers.get(callerId);
+	if (!caller) {
+		console.error(`Caller ${callerId} not found`);
+		return false;
+	}
+
+	if (caller.status !== 'waiting') {
+		console.error(`Caller ${callerId} is not in waiting status`);
+		return false;
+	}
+
+	try {
+		// Send rejection message to caller
+		caller.ws.send(JSON.stringify({
+			type: 'rejected',
+			message: 'Your call has been rejected by the operator. Please try again later.'
+		}));
+
+		// Close the connection after a brief delay to ensure message is sent
+		setTimeout(() => {
+			if (caller.ws.readyState === 1) { // 1 = OPEN
+				caller.ws.close();
+			}
+		}, 100);
+
+		caller.status = 'disconnected';
+		callers.delete(callerId);
+
+		console.log(`Caller ${callerId} rejected and disconnected`);
+		return true;
+	} catch (error) {
+		console.error(`Error rejecting caller ${callerId}:`, error);
 		return false;
 	}
 }
@@ -197,6 +244,12 @@ wss.on('connection', async (ws, req) => {
 				return;
 			}
 
+			if (parsed.type === 'operator_reject' && parsed.targetCallerId) {
+				// This would be sent from an operator interface
+				rejectCaller(parsed.targetCallerId);
+				return;
+			}
+
 			if (parsed.type === 'get_waiting_callers') {
 				// Return list of waiting callers (for operator interface)
 				ws.send(JSON.stringify({
@@ -244,6 +297,31 @@ wss.on('connection', async (ws, req) => {
 	ws.on('error', (error) => {
 		console.error(`WebSocket error for ${callerId}:`, error);
 	});
+});
+
+app.get('/callers/waiting', (req, res) => {
+	const waitingCallers = getWaitingCallers();
+	res.json(waitingCallers);
+});
+
+app.post('/callers/:id/accept', async (req, res) => {
+	const callerId = req.params.id;
+	const success = await acceptCaller(callerId);
+	if (success) {
+		res.json({ status: 'accepted' });
+	} else {
+		res.status(400).json({ status: 'error', message: 'Failed to accept caller' });
+	}
+});
+
+app.post('/callers/:id/reject', (req, res) => {
+	const callerId = req.params.id;
+	const success = rejectCaller(callerId);
+	if (success) {
+		res.json({ status: 'rejected' });
+	} else {
+		res.status(400).json({ status: 'error', message: 'Failed to reject caller' });
+	}
 });
 
 server.listen(PORT, () => {
