@@ -50,12 +50,6 @@ const ai = new GoogleGenAI({
 const wss = new WebSocketServer({ server });
 
 // Caller management system
-interface TranscriptEntry {
-	timestamp: Date;
-	speaker: 'AI' | 'User';
-	text: string;
-}
-
 interface Caller {
 	id: string;
 	ws: any;
@@ -72,10 +66,7 @@ interface Caller {
 	lastAudioSentTime?: number;
 	audioChunkCount?: number;
 	silenceDetected?: boolean;
-	transcript?: TranscriptEntry[];
 	isOperator?: boolean;
-	userAudioBuffer?: string[]; // Buffer to accumulate user audio chunks
-	userSpeechStartTime?: number; // Track when user started speaking
 }
 
 const callers = new Map<string, Caller>();
@@ -85,15 +76,6 @@ let callerIdCounter = 0;
 const generateCallerId = (): string => {
 	callerIdCounter++;
 	return `caller_${Date.now()}_${callerIdCounter}`;
-}
-
-// Helper function to provide audio summary (placeholder for now)
-// Note: Gemini Live API is optimized for real-time conversation, not transcription
-// For accurate transcription, consider using Google Cloud Speech-to-Text or OpenAI Whisper
-async function transcribeAudio(audioBase64: string, sampleRate: number = 24000): Promise<string> {
-	// Return a placeholder indicating audio was spoken
-	// The actual audio content is preserved in the conversation
-	return '[Audio response]';
 }
 
 // Helper function to send context hints to AI during conversation
@@ -152,7 +134,7 @@ You are now connected to a live customer call. Please:
 
 1. Start with a warm, natural greeting appropriate for ${timeOfDay}
 2. ${waitAcknowledgment}
-3. Introduce yourself as AuraGuard, your company CentriX, and mention you support NexLink Solutions
+3. Introduce yourself as AuraGuard, your company Hackuthin, and mention you support NexLink Solutions
 4. Express genuine readiness to help
 5. Ask an open-ended question: "How may I assist you today?" or "What brings you to us today?"
 
@@ -202,7 +184,6 @@ const createAISession = async (caller: Caller) => {
 	caller.aiHasIntroduced = false;
 	caller.conversationTurns = 0;
 	caller.isProcessingResponse = false;
-	caller.transcript = [];
 
 	const session = await ai.live.connect({
 		model: model,
@@ -233,55 +214,6 @@ const createAISession = async (caller: Caller) => {
 						: 0;
 					
 					console.log(`🤖 AI Response for ${caller.id} (${timeSinceUserSpeech}ms after user speech):`, msgString);
-					
-					// Extract text from AI response for transcript
-					try {
-						const msgObj = typeof message === 'string' ? JSON.parse(message) : message;
-
-						// Initialize transcript if needed
-						if (!caller.transcript) caller.transcript = [];
-
-						// Capture when modelTurn comes in (this has the actual content)
-						if (msgObj.serverContent?.modelTurn?.parts) {
-							// Check for audio content and transcribe it
-							const audioParts = msgObj.serverContent.modelTurn.parts.filter((part: any) =>
-								part.inlineData?.mimeType?.includes('audio')
-							);
-
-							if (audioParts.length > 0) {
-								// Transcribe the audio asynchronously
-								(async () => {
-									try {
-										const audioData = audioParts[0].inlineData.data;
-										const sampleRate = 24000; // Gemini audio output is 24kHz
-
-										console.log(`🎙️ Transcribing AI audio for ${caller.id}...`);
-										const transcribedText = await transcribeAudio(audioData, sampleRate);
-
-										if (!caller.transcript) caller.transcript = [];
-										caller.transcript.push({
-											timestamp: new Date(),
-											speaker: 'AI',
-											text: transcribedText
-										});
-
-										console.log(`📝 Transcription added for ${caller.id}: "${transcribedText}"`);
-									} catch (transcriptionError) {
-										console.error(`Error transcribing audio for ${caller.id}:`, transcriptionError);
-										// Fallback to placeholder if transcription fails
-										if (!caller.transcript) caller.transcript = [];
-										caller.transcript.push({
-											timestamp: new Date(),
-											speaker: 'AI',
-											text: '[Audio transcription failed]'
-										});
-									}
-								})();
-							}
-						}
-					} catch (transcriptError) {
-						console.error(`Error adding to transcript for ${caller.id}:`, transcriptError);
-					}
 
 					// Mark response as complete
 					caller.isProcessingResponse = false;
@@ -413,19 +345,6 @@ const getActiveCallers = () => {
 	return active;
 }
 
-const getTranscript = (callerId: string) => {
-	const caller = callers.get(callerId);
-	if (!caller) {
-		return null;
-	}
-	return {
-		id: caller.id,
-		phoneNumber: caller.phoneNumber,
-		name: caller.name,
-		transcript: caller.transcript || []
-	};
-}
-
 // WebSocket connection handler
 wss.on('connection', async (ws, req) => {
 	const callerId = generateCallerId();
@@ -465,7 +384,7 @@ wss.on('connection', async (ws, req) => {
 				parsed.type === 'operator_reject' ||
 				parsed.type === 'get_waiting_callers' ||
 				parsed.type === 'get_active_callers' ||
-				parsed.type === 'get_transcript') {
+				parsed.type === 'end_call') {
 				caller.isOperator = true;
 			}
 
@@ -500,13 +419,34 @@ wss.on('connection', async (ws, req) => {
 				return;
 			}
 
-			if (parsed.type === 'get_transcript' && parsed.callerId) {
-				// Return transcript for specific caller
-				const transcript = getTranscript(parsed.callerId);
-				if (transcript) {
+			if (parsed.type === 'end_call' && parsed.callerId) {
+				// End call for specific caller
+				const targetCaller = callers.get(parsed.callerId);
+				if (targetCaller) {
+					// Close AI session
+					if (targetCaller.session) {
+						targetCaller.session.close();
+						targetCaller.session = null;
+					}
+
+					// Notify caller that call is ending
+					targetCaller.ws.send(JSON.stringify({
+						type: 'call_ended',
+						message: 'Call ended by operator'
+					}));
+
+					// Close WebSocket connection
+					targetCaller.ws.close();
+
+					// Remove from callers map
+					callers.delete(parsed.callerId);
+
+					console.log(`Call ended by operator for ${parsed.callerId}`);
+
+			// Confirm to operator
 					ws.send(JSON.stringify({
-						type: 'transcript',
-						...transcript
+						type: 'call_ended_confirmation',
+						callerId: parsed.callerId
 					}));
 				} else {
 					ws.send(JSON.stringify({
@@ -568,16 +508,7 @@ wss.on('connection', async (ws, req) => {
 				caller.isProcessingResponse = false; // Reset if enough time has passed
 			}
 
-			// Initialize user audio buffer and track speech start
-			if (!caller.userAudioBuffer) {
-				caller.userAudioBuffer = [];
-				caller.userSpeechStartTime = now;
-			}
-
-			// Accumulate user audio for transcription
-			caller.userAudioBuffer.push(message);
-
-			// Forward audio to AI with enhanced context awareness
+			// Forward audio to AI
 			try {
 				caller.session.sendRealtimeInput({
 					audio: {
@@ -587,42 +518,6 @@ wss.on('connection', async (ws, req) => {
 				});
 				
 				console.log(`✓ Audio forwarded to AI for ${callerId} (debounced at ${MIN_AUDIO_INTERVAL}ms intervals)`);
-
-				// If user has stopped speaking (no audio for 2 seconds), transcribe accumulated audio
-				if (caller.userAudioBuffer.length > 0 && timeSinceLastResponse > 2000 && caller.userSpeechStartTime) {
-					const audioChunks = [...caller.userAudioBuffer];
-					caller.userAudioBuffer = [];
-
-					// Transcribe user audio asynchronously
-					(async () => {
-						try {
-							// Concatenate all audio chunks
-							const totalLength = audioChunks.reduce((sum, chunk) => sum + Buffer.from(chunk, 'base64').length, 0);
-							const combinedBuffer = Buffer.alloc(totalLength);
-							let offset = 0;
-
-							for (const chunk of audioChunks) {
-								const chunkBuffer = Buffer.from(chunk, 'base64');
-								chunkBuffer.copy(combinedBuffer, offset);
-								offset += chunkBuffer.length;
-							}
-
-							console.log(`🎙️ Transcribing user audio for ${callerId}...`);
-							const transcribedText = await transcribeAudio(combinedBuffer.toString('base64'), 16000);
-
-							if (!caller.transcript) caller.transcript = [];
-							caller.transcript.push({
-								timestamp: new Date(),
-								speaker: 'User',
-								text: transcribedText
-							});
-
-							console.log(`📝 User transcription added for ${callerId}: "${transcribedText}"`);
-						} catch (transcriptionError) {
-							console.error(`Error transcribing user audio for ${callerId}:`, transcriptionError);
-						}
-					})();
-				}
 			} catch (error) {
 				console.error(`✗ Error forwarding audio for ${callerId}:`, error);
 				caller.isProcessingResponse = false;

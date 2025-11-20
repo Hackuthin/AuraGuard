@@ -42,7 +42,7 @@
 │  ├─► Build rich prompt:                                         │
 │  │   • Greeting appropriate for time                            │
 │  │   • Wait acknowledgment (based on duration)                  │
-│  │   • Introduction (AuraGuard, CentriX, NexLink)              │
+│  │   • Introduction (AuraGuard, Hackuthin, NexLink)              │
 │  │   • Response behavior guidelines                             │
 │  │   • Explicit instructions to listen & respond                │
 │  │                                                              │
@@ -283,7 +283,7 @@ You are now connected to a live customer call. Please:
 
 1. Start with a warm, natural greeting appropriate for afternoon
 2. Thank you for your patience
-3. Introduce yourself as AuraGuard, your company CentriX...
+3. Introduce yourself as AuraGuard, your company Hackuthin...
 4. Express genuine readiness to help
 5. Ask an open-ended question...
 

@@ -214,150 +214,8 @@
 			opacity: 0.9;
 		}
 
-		/* Modal Styles */
-		.modal {
-			display: none;
-			position: fixed;
-			z-index: 1000;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-			background-color: rgba(0, 0, 0, 0.5);
-			animation: fadeIn 0.3s;
-		}
-
-		@keyframes fadeIn {
-			from {
-				opacity: 0;
-			}
-			to {
-				opacity: 1;
-			}
-		}
-
-		.modal-content {
-			background-color: #fff;
-			margin: 5% auto;
-			border-radius: 12px;
-			width: 90%;
-			max-width: 800px;
-			max-height: 80vh;
-			display: flex;
-			flex-direction: column;
-			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-		}
-
-		.modal-header {
-			padding: 20px 30px;
-			border-bottom: 1px solid #e0e0e0;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-		}
-
-		.modal-header h2 {
-			font-size: 24px;
-			font-weight: 600;
-		}
-
-		.modal-close {
-			background: none;
-			border: none;
-			font-size: 32px;
-			cursor: pointer;
-			color: #666;
-			line-height: 1;
-			padding: 0;
-			width: 32px;
-			height: 32px;
-		}
-
-		.modal-close:hover {
-			color: #000;
-		}
-
-		.modal-body {
-			padding: 30px;
-			overflow-y: auto;
-			flex: 1;
-		}
-
-		.modal-footer {
-			padding: 20px 30px;
-			border-top: 1px solid #e0e0e0;
-			display: flex;
-			justify-content: flex-end;
-			gap: 10px;
-		}
-
-		.transcript-info {
-			background: #f5f5f5;
-			padding: 15px;
-			border-radius: 8px;
-			margin-bottom: 20px;
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-			gap: 10px;
-		}
-
-		.transcript-info strong {
-			color: #667eea;
-		}
-
-		.transcript-messages {
-			display: flex;
-			flex-direction: column;
-			gap: 15px;
-			min-height: 200px;
-		}
-
-		.transcript-message {
-			display: flex;
-			flex-direction: column;
-			gap: 5px;
-		}
-
-		.transcript-message-header {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			font-size: 12px;
-			color: #666;
-		}
-
-		.transcript-message-speaker {
-			font-weight: 600;
-			color: #667eea;
-		}
-
-		.transcript-message-speaker.ai {
-			color: #764ba2;
-		}
-
-		.transcript-message-text {
-			background: #f5f5f5;
-			padding: 12px 15px;
-			border-radius: 8px;
-			border-left: 3px solid #667eea;
-		}
-
-		.transcript-message-text.ai {
-			background: #f0e6ff;
-			border-left-color: #764ba2;
-		}
-
-		.btn-primary {
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			color: #fff;
-		}
-
-		.btn-primary:hover {
-			opacity: 0.9;
-		}
-
-		.btn-view-transcript {
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		.btn-end-call {
+			background: #f44336;
 			color: #fff;
 			border: none;
 			padding: 10px 20px;
@@ -368,9 +226,10 @@
 			transition: all 0.3s ease;
 		}
 
-		.btn-view-transcript:hover {
+		.btn-end-call:hover {
+			background: #da190b;
 			transform: translateY(-2px);
-			box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+			box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
 		}
 	</style>
 </head>
@@ -431,37 +290,6 @@
 </div>
 </div>
 </div>
-
-<!-- Transcript Modal -->
-<div id="transcriptModal"
-	 class="modal">
-	<div class="modal-content">
-		<div class="modal-header">
-			<h2>Call Transcript</h2>
-			<button class="modal-close"
-					onclick="closeTranscript()">&times;</button>
-		</div>
-		<div class="modal-body">
-			<div class="transcript-info">
-				<div><strong>Caller:</strong> <span id="transcriptCallerName"></span></div>
-				<div><strong>Phone:</strong> <span id="transcriptCallerPhone"></span></div>
-				<div><strong>Call ID:</strong> <span id="transcriptCallerId"></span></div>
-			</div>
-			<div class="transcript-messages"
-				 id="transcriptMessages">
-				<div class="empty-state">
-					<p>No messages yet</p>
-				</div>
-			</div>
-		</div>
-		<div class="modal-footer">
-			<button class="btn btn-primary"
-					onclick="refreshTranscript()">Refresh</button>
-			<button class="btn"
-					onclick="closeTranscript()">Close</button>
-		</div>
-		</div>
-	</div>
 
 	<script>
 		let ws;
@@ -539,8 +367,12 @@
 			if (data.type === 'active_callers') {
 				displayActiveCallers(data.callers);
 			}
-			if (data.type === 'transcript') {
-				displayTranscript(data);
+			if (data.type === 'call_ended_confirmation') {
+				console.log(`Call ended for ${data.callerId}`);
+				// Refresh active callers list
+				setTimeout(() => {
+					requestActiveCallers();
+				}, 500);
 			}
 		}
 
@@ -677,8 +509,8 @@
 							</div>
 						</div>
 						<div class="caller-actions">
-							<button class="btn-view-transcript" onclick="viewTranscript('${caller.id}')">
-								View Transcript
+							<button class="btn-end-call" onclick="endCall('${caller.id}')">
+								End Call
 							</button>
 						</div>
 					</div>
@@ -686,85 +518,17 @@
 				}).join('');
 			}
 
-			let currentTranscriptCallerId = null;
+				function endCall(callerId) {
+					if (!confirm('Are you sure you want to end this call?')) {
+						return;
+					}
 
-			function viewTranscript(callerId) {
-				currentTranscriptCallerId = callerId;
 				if (ws && ws.readyState === WebSocket.OPEN) {
 					ws.send(JSON.stringify({
-						type: 'get_transcript',
+						type: 'end_call',
 						callerId: callerId
 					}));
-				}
-			}
-
-			function displayTranscript(data) {
-				const modal = document.getElementById('transcriptModal');
-				const callerName = document.getElementById('transcriptCallerName');
-				const callerPhone = document.getElementById('transcriptCallerPhone');
-				const callerId = document.getElementById('transcriptCallerId');
-				const messages = document.getElementById('transcriptMessages');
-
-				// Update caller info
-				callerName.textContent = data.name || 'Unknown Caller';
-				callerPhone.textContent = data.phoneNumber || 'No number';
-				callerId.textContent = data.id;
-
-				// Display transcript messages
-				if (!data.transcript || data.transcript.length === 0) {
-					messages.innerHTML = `
-					<div class="empty-state">
-						<p>No messages yet</p>
-					</div>
-				`;
-				} else {
-					messages.innerHTML = data.transcript.map(entry => {
-						const timestamp = new Date(entry.timestamp);
-						const timeStr = timestamp.toLocaleTimeString();
-						const speakerClass = entry.speaker === 'AI' ? 'ai' : 'user';
-
-						return `
-						<div class="transcript-message">
-							<div class="transcript-message-header">
-								<span class="transcript-message-speaker ${speakerClass}">
-									${entry.speaker === 'AI' ? '🤖 AI Assistant' : '👤 Caller'}
-								</span>
-								<span>${timeStr}</span>
-							</div>
-							<div class="transcript-message-text ${speakerClass}">
-								${entry.text}
-							</div>
-						</div>
-					`;
-					}).join('');
-
-					// Auto-scroll to bottom
-					setTimeout(() => {
-						messages.scrollTop = messages.scrollHeight;
-					}, 100);
-				}
-
-				// Show modal
-				modal.style.display = 'block';
-			}
-
-			function closeTranscript() {
-				const modal = document.getElementById('transcriptModal');
-				modal.style.display = 'none';
-				currentTranscriptCallerId = null;
-			}
-
-			function refreshTranscript() {
-				if (currentTranscriptCallerId) {
-					viewTranscript(currentTranscriptCallerId);
-				}
-			}
-
-			// Close modal when clicking outside
-			window.onclick = function (event) {
-				const modal = document.getElementById('transcriptModal');
-				if (event.target === modal) {
-					closeTranscript();
+					console.log(`Ending call for: ${callerId}`);
 				}
 			}
 
