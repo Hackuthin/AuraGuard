@@ -56,12 +56,11 @@ class AuraGuardClient {
 			this.log('Connecting to server...', 'info');
 
 			// Use the current hostname and port
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-			const host = window.location.hostname;
-			const port = window.location.port || '3000';
-			const wsUrl = `${protocol}//${host}:${port}`;
+			const protocol =
+				window.location.protocol === "https:" ? "wss:" : "ws:";
+			const wsUrl = `${protocol}//${window.location.host}`;
 
-			this.ws = new WebSocket('wss://auraguard-myzb.onrender.com/');
+			this.ws = new WebSocket(wsUrl);
 
 			this.ws.onopen = () => {
 				this.isConnected = true;

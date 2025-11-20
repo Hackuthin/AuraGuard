@@ -50,6 +50,12 @@ const ai = new GoogleGenAI({
 const wss = new WebSocketServer({ server });
 
 // Caller management system
+interface TranscriptEntry {
+	timestamp: Date;
+	speaker: 'AI' | 'User';
+	text: string;
+}
+
 interface Caller {
 	id: string;
 	ws: any;
@@ -66,6 +72,8 @@ interface Caller {
 	lastAudioSentTime?: number;
 	audioChunkCount?: number;
 	silenceDetected?: boolean;
+	transcript?: TranscriptEntry[];
+	isOperator?: boolean;
 }
 
 const callers = new Map<string, Caller>();
@@ -183,6 +191,7 @@ const createAISession = async (caller: Caller) => {
 	caller.aiHasIntroduced = false;
 	caller.conversationTurns = 0;
 	caller.isProcessingResponse = false;
+	caller.transcript = [];
 
 	const session = await ai.live.connect({
 		model: model,
@@ -214,6 +223,29 @@ const createAISession = async (caller: Caller) => {
 					
 					console.log(`🤖 AI Response for ${caller.id} (${timeSinceUserSpeech}ms after user speech):`, msgString);
 					
+					// Extract text from AI response for transcript
+					try {
+						const msgObj = typeof message === 'string' ? JSON.parse(message) : message;
+						if (msgObj.serverContent?.turnComplete && msgObj.serverContent?.modelTurn?.parts) {
+							// Find text parts in the response
+							const textParts = msgObj.serverContent.modelTurn.parts
+								.filter((part: any) => part.text)
+								.map((part: any) => part.text);
+
+							if (textParts.length > 0) {
+								const aiText = textParts.join(' ');
+								if (!caller.transcript) caller.transcript = [];
+								caller.transcript.push({
+									timestamp: new Date(),
+									speaker: 'AI',
+									text: aiText
+								});
+							}
+						}
+					} catch (transcriptError) {
+						console.error(`Error adding to transcript for ${caller.id}:`, transcriptError);
+					}
+
 					// Mark response as complete
 					caller.isProcessingResponse = false;
 					caller.conversationTurns = (caller.conversationTurns || 0) + 1;
@@ -315,7 +347,7 @@ const rejectCaller = (callerId: string) => {
 const getWaitingCallers = () => {
 	const waiting: any[] = [];
 	callers.forEach((caller, id) => {
-		if (caller.status === 'waiting') {
+		if (caller.status === 'waiting' && !caller.isOperator) {
 			waiting.push({
 				id: caller.id,
 				phoneNumber: caller.phoneNumber,
@@ -325,6 +357,36 @@ const getWaitingCallers = () => {
 		}
 	});
 	return waiting;
+}
+
+const getActiveCallers = () => {
+	const active: any[] = [];
+	callers.forEach((caller, id) => {
+		if (caller.status === 'connected' && !caller.isOperator) {
+			active.push({
+				id: caller.id,
+				phoneNumber: caller.phoneNumber,
+				name: caller.name,
+				connectedAt: caller.connectedAt,
+				acceptedAt: caller.acceptedAt,
+				conversationTurns: caller.conversationTurns || 0
+			});
+		}
+	});
+	return active;
+}
+
+const getTranscript = (callerId: string) => {
+	const caller = callers.get(callerId);
+	if (!caller) {
+		return null;
+	}
+	return {
+		id: caller.id,
+		phoneNumber: caller.phoneNumber,
+		name: caller.name,
+		transcript: caller.transcript || []
+	};
 }
 
 // WebSocket connection handler
@@ -361,6 +423,15 @@ wss.on('connection', async (ws, req) => {
 		try {
 			const parsed = JSON.parse(data.toString());
 
+			// Mark as operator if sending operator-specific messages
+			if (parsed.type === 'operator_accept' || 
+			    parsed.type === 'operator_reject' || 
+			    parsed.type === 'get_waiting_callers' || 
+			    parsed.type === 'get_active_callers' || 
+			    parsed.type === 'get_transcript') {
+				caller.isOperator = true;
+			}
+
 			// Handle control messages
 			if (parsed.type === 'operator_accept' && parsed.targetCallerId) {
 				// This would be sent from an operator interface
@@ -380,6 +451,32 @@ wss.on('connection', async (ws, req) => {
 					type: 'waiting_callers',
 					callers: getWaitingCallers()
 				}));
+				return;
+			}
+
+			if (parsed.type === 'get_active_callers') {
+				// Return list of active callers (for operator interface)
+				ws.send(JSON.stringify({
+					type: 'active_callers',
+					callers: getActiveCallers()
+				}));
+				return;
+			}
+
+			if (parsed.type === 'get_transcript' && parsed.callerId) {
+				// Return transcript for specific caller
+				const transcript = getTranscript(parsed.callerId);
+				if (transcript) {
+					ws.send(JSON.stringify({
+						type: 'transcript',
+						...transcript
+					}));
+				} else {
+					ws.send(JSON.stringify({
+						type: 'error',
+						message: 'Caller not found'
+					}));
+				}
 				return;
 			}
 		} catch (e) {

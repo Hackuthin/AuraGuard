@@ -213,6 +213,165 @@
 			font-size: 14px;
 			opacity: 0.9;
 		}
+
+		/* Modal Styles */
+		.modal {
+			display: none;
+			position: fixed;
+			z-index: 1000;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			animation: fadeIn 0.3s;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+			}
+			to {
+				opacity: 1;
+			}
+		}
+
+		.modal-content {
+			background-color: #fff;
+			margin: 5% auto;
+			border-radius: 12px;
+			width: 90%;
+			max-width: 800px;
+			max-height: 80vh;
+			display: flex;
+			flex-direction: column;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+		}
+
+		.modal-header {
+			padding: 20px 30px;
+			border-bottom: 1px solid #e0e0e0;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.modal-header h2 {
+			font-size: 24px;
+			font-weight: 600;
+		}
+
+		.modal-close {
+			background: none;
+			border: none;
+			font-size: 32px;
+			cursor: pointer;
+			color: #666;
+			line-height: 1;
+			padding: 0;
+			width: 32px;
+			height: 32px;
+		}
+
+		.modal-close:hover {
+			color: #000;
+		}
+
+		.modal-body {
+			padding: 30px;
+			overflow-y: auto;
+			flex: 1;
+		}
+
+		.modal-footer {
+			padding: 20px 30px;
+			border-top: 1px solid #e0e0e0;
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+		}
+
+		.transcript-info {
+			background: #f5f5f5;
+			padding: 15px;
+			border-radius: 8px;
+			margin-bottom: 20px;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 10px;
+		}
+
+		.transcript-info strong {
+			color: #667eea;
+		}
+
+		.transcript-messages {
+			display: flex;
+			flex-direction: column;
+			gap: 15px;
+			min-height: 200px;
+		}
+
+		.transcript-message {
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+		}
+
+		.transcript-message-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 12px;
+			color: #666;
+		}
+
+		.transcript-message-speaker {
+			font-weight: 600;
+			color: #667eea;
+		}
+
+		.transcript-message-speaker.ai {
+			color: #764ba2;
+		}
+
+		.transcript-message-text {
+			background: #f5f5f5;
+			padding: 12px 15px;
+			border-radius: 8px;
+			border-left: 3px solid #667eea;
+		}
+
+		.transcript-message-text.ai {
+			background: #f0e6ff;
+			border-left-color: #764ba2;
+		}
+
+		.btn-primary {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: #fff;
+		}
+
+		.btn-primary:hover {
+			opacity: 0.9;
+		}
+
+		.btn-view-transcript {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: #fff;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 6px;
+			font-size: 14px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.btn-view-transcript:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+		}
 	</style>
 </head>
 
@@ -258,6 +417,49 @@
 					<p>New callers will appear here when they connect</p>
 				</div>
 			</div>
+<h2 class="section-title">Active Calls</h2>
+<div class="callers-list"
+	 id="activeCallersList">
+	<div class="empty-state">
+		<svg viewBox="0 0 24 24">
+			<path
+				  d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2c0-4.97-4.03-9-9-9v2c3.87 0 7 3.13 7 7zm-4 0h2c0-2.76-2.24-5-5-5v2c1.66 0 3 1.34 3 3z" />
+		</svg>
+		<h3>No Active Calls</h3>
+		<p>Active calls will appear here when accepted</p>
+	</div>
+</div>
+</div>
+</div>
+
+<!-- Transcript Modal -->
+<div id="transcriptModal"
+	 class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<h2>Call Transcript</h2>
+			<button class="modal-close"
+					onclick="closeTranscript()">&times;</button>
+		</div>
+		<div class="modal-body">
+			<div class="transcript-info">
+				<div><strong>Caller:</strong> <span id="transcriptCallerName"></span></div>
+				<div><strong>Phone:</strong> <span id="transcriptCallerPhone"></span></div>
+				<div><strong>Call ID:</strong> <span id="transcriptCallerId"></span></div>
+			</div>
+			<div class="transcript-messages"
+				 id="transcriptMessages">
+				<div class="empty-state">
+					<p>No messages yet</p>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button class="btn btn-primary"
+					onclick="refreshTranscript()">Refresh</button>
+			<button class="btn"
+					onclick="closeTranscript()">Close</button>
+		</div>
 		</div>
 	</div>
 
@@ -273,10 +475,14 @@
 				console.log('Connected to server');
 				updateStatus(true);
 				requestWaitingCallers();
+				requestActiveCallers();
 
-				// Poll for waiting callers every 3 seconds
+				// Poll for waiting and active callers every 3 seconds
 				if (reconnectInterval) clearInterval(reconnectInterval);
-				reconnectInterval = setInterval(requestWaitingCallers, 3000);
+				reconnectInterval = setInterval(() => {
+					requestWaitingCallers();
+					requestActiveCallers();
+				}, 3000);
 			};
 
 			ws.onmessage = (event) => {
@@ -320,9 +526,21 @@
 			}
 		}
 
+			function requestActiveCallers() {
+				if (ws && ws.readyState === WebSocket.OPEN) {
+					ws.send(JSON.stringify({ type: 'get_active_callers' }));
+				}
+			}
+
 		function handleMessage(data) {
 			if (data.type === 'waiting_callers') {
 				displayWaitingCallers(data.callers);
+			}
+			if (data.type === 'active_callers') {
+				displayActiveCallers(data.callers);
+			}
+			if (data.type === 'transcript') {
+				displayTranscript(data);
 			}
 		}
 
@@ -388,8 +606,11 @@
 				}));
 				console.log(`Accepting caller: ${callerId}`);
 
-				// Refresh the list after a short delay
-				setTimeout(requestWaitingCallers, 500);
+				// Refresh both lists after a short delay
+				setTimeout(() => {
+					requestWaitingCallers();
+					requestActiveCallers();
+				}, 500);
 			}
 		}
 
@@ -409,6 +630,143 @@
 				setTimeout(requestWaitingCallers, 500);
 			}
 		}
+
+			function displayActiveCallers(callers) {
+				const activeCallersList = document.getElementById('activeCallersList');
+				const activeCount = document.getElementById('activeCount');
+
+				activeCount.textContent = callers.length;
+
+				if (callers.length === 0) {
+					activeCallersList.innerHTML = `
+					<div class="empty-state">
+						<svg viewBox="0 0 24 24">
+							<path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM19 12h2c0-4.97-4.03-9-9-9v2c3.87 0 7 3.13 7 7zm-4 0h2c0-2.76-2.24-5-5-5v2c1.66 0 3 1.34 3 3z" />
+						</svg>
+						<h3>No Active Calls</h3>
+						<p>Active calls will appear here when accepted</p>
+					</div>
+				`;
+					return;
+				}
+
+				activeCallersList.innerHTML = callers.map(caller => {
+					const connectedTime = new Date(caller.connectedAt);
+					const acceptedTime = new Date(caller.acceptedAt);
+					const callDuration = Math.floor((Date.now() - acceptedTime.getTime()) / 1000);
+					const minutes = Math.floor(callDuration / 60);
+					const seconds = callDuration % 60;
+
+					return `
+					<div class="caller-card">
+						<div class="caller-info">
+							<div class="caller-name">${caller.name || 'Unknown Caller'}</div>
+							<div class="caller-details">
+								<div class="caller-detail">
+									📞 ${caller.phoneNumber || 'No number'}
+								</div>
+								<div class="caller-detail">
+									⏱️ Duration: ${minutes}m ${seconds}s
+								</div>
+								<div class="caller-detail">
+									💬 Turns: ${caller.conversationTurns || 0}
+								</div>
+								<div class="caller-detail">
+									🆔 ${caller.id}
+								</div>
+							</div>
+						</div>
+						<div class="caller-actions">
+							<button class="btn-view-transcript" onclick="viewTranscript('${caller.id}')">
+								View Transcript
+							</button>
+						</div>
+					</div>
+				`;
+				}).join('');
+			}
+
+			let currentTranscriptCallerId = null;
+
+			function viewTranscript(callerId) {
+				currentTranscriptCallerId = callerId;
+				if (ws && ws.readyState === WebSocket.OPEN) {
+					ws.send(JSON.stringify({
+						type: 'get_transcript',
+						callerId: callerId
+					}));
+				}
+			}
+
+			function displayTranscript(data) {
+				const modal = document.getElementById('transcriptModal');
+				const callerName = document.getElementById('transcriptCallerName');
+				const callerPhone = document.getElementById('transcriptCallerPhone');
+				const callerId = document.getElementById('transcriptCallerId');
+				const messages = document.getElementById('transcriptMessages');
+
+				// Update caller info
+				callerName.textContent = data.name || 'Unknown Caller';
+				callerPhone.textContent = data.phoneNumber || 'No number';
+				callerId.textContent = data.id;
+
+				// Display transcript messages
+				if (!data.transcript || data.transcript.length === 0) {
+					messages.innerHTML = `
+					<div class="empty-state">
+						<p>No messages yet</p>
+					</div>
+				`;
+				} else {
+					messages.innerHTML = data.transcript.map(entry => {
+						const timestamp = new Date(entry.timestamp);
+						const timeStr = timestamp.toLocaleTimeString();
+						const speakerClass = entry.speaker === 'AI' ? 'ai' : 'user';
+
+						return `
+						<div class="transcript-message">
+							<div class="transcript-message-header">
+								<span class="transcript-message-speaker ${speakerClass}">
+									${entry.speaker === 'AI' ? '🤖 AI Assistant' : '👤 Caller'}
+								</span>
+								<span>${timeStr}</span>
+							</div>
+							<div class="transcript-message-text ${speakerClass}">
+								${entry.text}
+							</div>
+						</div>
+					`;
+					}).join('');
+
+					// Auto-scroll to bottom
+					setTimeout(() => {
+						messages.scrollTop = messages.scrollHeight;
+					}, 100);
+				}
+
+				// Show modal
+				modal.style.display = 'block';
+			}
+
+			function closeTranscript() {
+				const modal = document.getElementById('transcriptModal');
+				modal.style.display = 'none';
+				currentTranscriptCallerId = null;
+			}
+
+			function refreshTranscript() {
+				if (currentTranscriptCallerId) {
+					viewTranscript(currentTranscriptCallerId);
+				}
+			}
+
+			// Close modal when clicking outside
+			window.onclick = function (event) {
+				const modal = document.getElementById('transcriptModal');
+				if (event.target === modal) {
+					closeTranscript();
+				}
+			}
 
 		// Initialize connection
 		connect();
