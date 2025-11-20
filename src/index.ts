@@ -59,6 +59,10 @@ interface Caller {
 	acceptedAt?: Date;
 	phoneNumber?: string;
 	name?: string;
+	aiHasIntroduced?: boolean;
+	lastUserSpeechTime?: number;
+	conversationTurns?: number;
+	isProcessingResponse?: boolean;
 }
 
 const callers = new Map<string, Caller>();
@@ -68,6 +72,20 @@ let callerIdCounter = 0;
 const generateCallerId = (): string => {
 	callerIdCounter++;
 	return `caller_${Date.now()}_${callerIdCounter}`;
+}
+
+// Helper function to send context hints to AI during conversation
+const sendConversationContext = (caller: Caller, context: string) => {
+	if (!caller.session) {
+		console.error(`Cannot send context: No session for ${caller.id}`);
+		return;
+	}
+	
+	caller.session.sendRealtimeInput({
+		text: context
+	});
+	
+	console.log(`📋 Context sent to AI for ${caller.id}`);
 }
 
 // Trigger AI to speak with enhanced context
@@ -123,19 +141,34 @@ Guidelines:
 - Make the customer feel valued and heard
 - Be ready to listen actively after your introduction
 
+IMPORTANT - Response Behavior:
+- After your introduction, LISTEN carefully to what the customer says
+- When the customer speaks, acknowledge what they said before responding
+- Respond directly and relevantly to their specific question or concern
+- If they ask a question, answer it clearly and completely
+- If they describe a problem, show empathy and offer solutions
+- Keep responses focused and conversational (20-40 seconds)
+- Ask clarifying questions when needed
+- Never ignore what the customer just said
+
 Begin speaking now.`;
 
 	caller.session.sendRealtimeInput({
 		text: introPrompt
 	});
+	
+	// Mark introduction as triggered
+	caller.aiHasIntroduced = true;
 
 	console.log(`✓ AI introduction triggered for ${caller.id} (waited ${waitTimeSeconds}s)`);
 }
 
 // Create AI session for a caller
 const createAISession = async (caller: Caller) => {
-	// Add flag to track if AI has introduced itself
-	(caller as any).aiHasIntroduced = false;
+	// Initialize conversation tracking
+	caller.aiHasIntroduced = false;
+	caller.conversationTurns = 0;
+	caller.isProcessingResponse = false;
 
 	const session = await ai.live.connect({
 		model: model,
@@ -147,20 +180,35 @@ const createAISession = async (caller: Caller) => {
 			onerror: (e) => {
 				console.debug(`AI Error for ${caller.id}:`, e.message);
 				caller.ws.send(JSON.stringify({ type: 'error', message: e.message }));
+				caller.isProcessingResponse = false;
 			},
 			onclose: (e) => {
 				console.debug(`AI Session closed for ${caller.id}:`, e.reason);
 				caller.ws.send(JSON.stringify({ type: 'status', message: 'AI session closed' }));
+				caller.isProcessingResponse = false;
 			},
 			onmessage: (message) => {
 				// Properly serialize the message object to JSON
 				try {
 					const msgString = typeof message === 'string' ? message : JSON.stringify(message);
-					console.log(`AI Response for ${caller.id}:`, msgString);
+					
+					// Track AI response timing
+					const responseTime = Date.now();
+					const timeSinceUserSpeech = caller.lastUserSpeechTime 
+						? responseTime - caller.lastUserSpeechTime 
+						: 0;
+					
+					console.log(`🤖 AI Response for ${caller.id} (${timeSinceUserSpeech}ms after user speech):`, msgString);
+					
+					// Mark response as complete
+					caller.isProcessingResponse = false;
+					caller.conversationTurns = (caller.conversationTurns || 0) + 1;
+					
 					caller.ws.send(msgString);
 				} catch (error) {
 					console.error(`Error processing AI message for ${caller.id}:`, error);
 					caller.ws.send(JSON.stringify({ type: 'error', message: 'Error processing AI response' }));
+					caller.isProcessingResponse = false;
 				}
 			}
 		},
@@ -328,22 +376,44 @@ wss.on('connection', async (ws, req) => {
 		if (caller.status === 'connected' && caller.session) {
 			const message = data.toString();
 
+			// Track user speech timing
+			caller.lastUserSpeechTime = Date.now();
+			const turnNumber = (caller.conversationTurns || 0) + 1;
+			
+			console.log(`🎤 User audio received for ${callerId} (turn ${turnNumber})`);
+
 			// Optional: Trigger AI introduction on first user speech instead of auto-trigger
 			// Uncomment the following block to enable this behavior:
 			/*
-			if (!(caller as any).aiHasIntroduced) {
-				(caller as any).aiHasIntroduced = true;
+			if (!caller.aiHasIntroduced) {
+				caller.aiHasIntroduced = true;
 				triggerAIIntroduction(caller);
 				console.log(`AI introduction triggered by user speech for ${callerId}`);
+				return; // Don't forward the first audio chunk that triggered introduction
 			}
 			*/
 
-			caller.session.sendRealtimeInput({
-				audio: {
-					data: message,
-					mimeType: 'audio/pcm;rate=16000'
-				}
-			});
+			// Mark that we're processing user input
+			caller.isProcessingResponse = true;
+
+			// Forward audio to AI with enhanced context awareness
+			try {
+				caller.session.sendRealtimeInput({
+					audio: {
+						data: message,
+						mimeType: 'audio/pcm;rate=16000'
+					}
+				});
+				
+				console.log(`✓ Audio forwarded to AI for ${callerId}`);
+			} catch (error) {
+				console.error(`✗ Error forwarding audio for ${callerId}:`, error);
+				caller.isProcessingResponse = false;
+				caller.ws.send(JSON.stringify({
+					type: 'error',
+					message: 'Failed to process audio input'
+				}));
+			}
 		} else {
 			// Caller is not yet accepted
 			ws.send(JSON.stringify({
