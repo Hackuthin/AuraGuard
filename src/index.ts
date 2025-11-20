@@ -33,6 +33,9 @@ app.get('/', (req, res) => {
 app.get('/phone', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'phone', 'phone.html'));
 });
+app.get('/operator', (req, res) => {
+	res.sendFile(path.join(process.cwd(), 'public', 'operator', 'operator.html'));
+});
 
 const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 const apiKey = process.env.GEMINI_API_KEY;
@@ -46,50 +49,200 @@ const ai = new GoogleGenAI({
 
 const wss = new WebSocketServer({ server });
 
-wss.on('connection', async (ws) => {
+// Caller management system
+interface Caller {
+	id: string;
+	ws: any;
+	session: any | null;
+	status: 'waiting' | 'connected' | 'disconnected';
+	connectedAt: Date;
+	acceptedAt?: Date;
+	phoneNumber?: string;
+	name?: string;
+}
+
+const callers = new Map<string, Caller>();
+let callerIdCounter = 0;
+
+// Generate unique caller ID
+const generateCallerId = (): string => {
+	callerIdCounter++;
+	return `caller_${Date.now()}_${callerIdCounter}`;
+}
+
+// Create AI session for a caller
+const createAISession = async (caller: Caller) => {
 	const session = await ai.live.connect({
 		model: model,
 		callbacks: {
 			onopen: () => {
-				console.debug('Opened');
-				ws.send(JSON.stringify({ type: 'status', message: 'Connected to AI' }));
+				console.debug(`AI Session opened for ${caller.id}`);
+				caller.ws.send(JSON.stringify({ type: 'status', message: 'Connected to AI' }));
 			},
 			onerror: (e) => {
-				console.debug('Error:', e.message);
-				ws.send(JSON.stringify({ type: 'error', message: e.message }));
+				console.debug(`AI Error for ${caller.id}:`, e.message);
+				caller.ws.send(JSON.stringify({ type: 'error', message: e.message }));
 			},
 			onclose: (e) => {
-				console.debug('Close:', e.reason);
-				ws.send(JSON.stringify({ type: 'status', message: 'AI session closed' }));
+				console.debug(`AI Session closed for ${caller.id}:`, e.reason);
+				caller.ws.send(JSON.stringify({ type: 'status', message: 'AI session closed' }));
 			},
 			onmessage: (message) => {
 				// Properly serialize the message object to JSON
 				try {
 					const msgString = typeof message === 'string' ? message : JSON.stringify(message);
-					console.log('AI Response:', msgString);
-					ws.send(msgString);
+					console.log(`AI Response for ${caller.id}:`, msgString);
+					caller.ws.send(msgString);
 				} catch (error) {
-					console.error('Error processing AI message:', error);
-					ws.send(JSON.stringify({ type: 'error', message: 'Error processing AI response' }));
+					console.error(`Error processing AI message for ${caller.id}:`, error);
+					caller.ws.send(JSON.stringify({ type: 'error', message: 'Error processing AI response' }));
 				}
 			}
 		},
 		config: config
 	});
+	return session;
+}
 
-	ws.on('close', () => session.close());
+// Accept a caller and connect them to AI
+const acceptCaller = async (callerId: string) => {
+	const caller = callers.get(callerId);
+	if (!caller) {
+		console.error(`Caller ${callerId} not found`);
+		return false;
+	}
 
+	if (caller.status !== 'waiting') {
+		console.error(`Caller ${callerId} is not in waiting status`);
+		return false;
+	}
+
+	try {
+		// Create AI session for the caller
+		caller.session = await createAISession(caller);
+		caller.status = 'connected';
+		caller.acceptedAt = new Date();
+
+		caller.ws.send(JSON.stringify({
+			type: 'accepted',
+			message: 'Your call has been accepted. You are now connected to AI.'
+		}));
+
+		console.log(`Caller ${callerId} accepted and connected to AI`);
+		return true;
+	} catch (error) {
+		console.error(`Error accepting caller ${callerId}:`, error);
+		caller.ws.send(JSON.stringify({
+			type: 'error',
+			message: 'Failed to connect to AI'
+		}));
+		return false;
+	}
+}
+
+// Get list of waiting callers
+const getWaitingCallers = () => {
+	const waiting: any[] = [];
+	callers.forEach((caller, id) => {
+		if (caller.status === 'waiting') {
+			waiting.push({
+				id: caller.id,
+				phoneNumber: caller.phoneNumber,
+				name: caller.name,
+				connectedAt: caller.connectedAt
+			});
+		}
+	});
+	return waiting;
+}
+
+// WebSocket connection handler
+wss.on('connection', async (ws, req) => {
+	const callerId = generateCallerId();
+
+	// Create caller entry
+	const caller: Caller = {
+		id: callerId,
+		ws: ws,
+		session: null,
+		status: 'waiting',
+		connectedAt: new Date(),
+		phoneNumber: req.headers['x-phone-number'] as string,
+		name: req.headers['x-caller-name'] as string
+	};
+
+	callers.set(callerId, caller);
+	console.log(`New caller ${callerId} connected. Status: waiting. Total callers: ${callers.size}`);
+
+	// Send initial status to caller
+	ws.send(JSON.stringify({
+		type: 'waiting',
+		callerId: callerId,
+		message: 'You are in the queue. Please wait for an operator to accept your call.'
+	}));
+
+// Handle incoming messages from caller
 	ws.on('message', async (data) => {
-		// Convert the incoming data to string (base64)
-		const message = data.toString();
+		const caller = callers.get(callerId);
+		if (!caller) return;
 
-		// Send the message to the AI session with proper MIME type
-		session.sendRealtimeInput({
-			audio: {
-				data: message,
-				mimeType: 'audio/pcm;rate=16000'
+		// Check if message is a control message (JSON)
+		try {
+			const parsed = JSON.parse(data.toString());
+
+			// Handle control messages
+			if (parsed.type === 'operator_accept' && parsed.targetCallerId) {
+				// This would be sent from an operator interface
+				await acceptCaller(parsed.targetCallerId);
+				return;
 			}
-		});
+
+			if (parsed.type === 'get_waiting_callers') {
+				// Return list of waiting callers (for operator interface)
+				ws.send(JSON.stringify({
+					type: 'waiting_callers',
+					callers: getWaitingCallers()
+				}));
+				return;
+			}
+		} catch (e) {
+			// Not JSON, assume it's audio data
+		}
+
+		// Only forward audio if caller is connected to AI
+		if (caller.status === 'connected' && caller.session) {
+			const message = data.toString();
+			caller.session.sendRealtimeInput({
+				audio: {
+					data: message,
+					mimeType: 'audio/pcm;rate=16000'
+				}
+			});
+		} else {
+			// Caller is not yet accepted
+			ws.send(JSON.stringify({
+				type: 'error',
+				message: 'You are not yet connected. Please wait for an operator to accept your call.'
+			}));
+		}
+	});
+
+	// Handle disconnection
+	ws.on('close', () => {
+		const caller = callers.get(callerId);
+		if (caller) {
+			if (caller.session) {
+				caller.session.close();
+			}
+			caller.status = 'disconnected';
+			callers.delete(callerId);
+			console.log(`Caller ${callerId} disconnected. Total callers: ${callers.size}`);
+		}
+	});
+
+	// Handle errors
+	ws.on('error', (error) => {
+		console.error(`WebSocket error for ${callerId}:`, error);
 	});
 });
 
