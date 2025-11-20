@@ -28,10 +28,10 @@ app.use(express.static('public'));
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-	res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
-});
-app.get('/phone', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'phone', 'phone.html'));
+});
+app.get('/test', (req, res) => {
+	res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 app.get('/operator', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'operator', 'operator.html'));
