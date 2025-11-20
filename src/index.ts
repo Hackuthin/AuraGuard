@@ -63,6 +63,9 @@ interface Caller {
 	lastUserSpeechTime?: number;
 	conversationTurns?: number;
 	isProcessingResponse?: boolean;
+	lastAudioSentTime?: number;
+	audioChunkCount?: number;
+	silenceDetected?: boolean;
 }
 
 const callers = new Map<string, Caller>();
@@ -143,6 +146,9 @@ Guidelines:
 
 IMPORTANT - Response Behavior:
 - After your introduction, LISTEN carefully to what the customer says
+- WAIT for the customer to COMPLETELY FINISH speaking before you respond
+- Do NOT interrupt the customer mid-sentence or mid-thought
+- Listen for natural pauses that indicate the customer has finished their statement
 - When the customer speaks, acknowledge what they said before responding
 - Respond directly and relevantly to their specific question or concern
 - If they ask a question, answer it clearly and completely
@@ -150,6 +156,14 @@ IMPORTANT - Response Behavior:
 - Keep responses focused and conversational (20-40 seconds)
 - Ask clarifying questions when needed
 - Never ignore what the customer just said
+- Be patient and give the customer time to express themselves fully
+
+CRITICAL - Turn-Taking Rules:
+- Only respond when you detect a clear pause or completion in the customer's speech
+- If you hear "um", "uh", or brief pauses, the customer is likely still speaking
+- Wait at least 1-2 seconds of silence before assuming the customer has finished
+- Never cut off the customer or speak over them
+- Let the customer control the pace of the conversation
 
 Begin speaking now.`;
 
@@ -375,12 +389,32 @@ wss.on('connection', async (ws, req) => {
 		// Only forward audio if caller is connected to AI
 		if (caller.status === 'connected' && caller.session) {
 			const message = data.toString();
+			const now = Date.now();
 
-			// Track user speech timing
-			caller.lastUserSpeechTime = Date.now();
+			// Initialize tracking variables if needed
+			if (!caller.audioChunkCount) caller.audioChunkCount = 0;
+			if (!caller.lastAudioSentTime) caller.lastAudioSentTime = 0;
+
+			// Increment audio chunk counter
+			caller.audioChunkCount++;
+
+			// DEBOUNCING: Only forward audio every 300ms to reduce AI sensitivity
+			// This prevents the AI from being triggered by every single audio chunk
+			const timeSinceLastSent = now - caller.lastAudioSentTime;
+			const MIN_AUDIO_INTERVAL = 300; // milliseconds between audio forwards
+
+			// Skip if we've sent audio too recently (unless it's the first chunk)
+			if (timeSinceLastSent < MIN_AUDIO_INTERVAL && caller.lastAudioSentTime > 0) {
+				// Silently skip this chunk
+				return;
+			}
+
+			// Track user speech timing (only when we actually forward audio)
+			caller.lastUserSpeechTime = now;
+			caller.lastAudioSentTime = now;
 			const turnNumber = (caller.conversationTurns || 0) + 1;
 			
-			console.log(`🎤 User audio received for ${callerId} (turn ${turnNumber})`);
+			console.log(`🎤 User audio received for ${callerId} (turn ${turnNumber}, chunk ${caller.audioChunkCount})`);
 
 			// Optional: Trigger AI introduction on first user speech instead of auto-trigger
 			// Uncomment the following block to enable this behavior:
@@ -393,8 +427,12 @@ wss.on('connection', async (ws, req) => {
 			}
 			*/
 
-			// Mark that we're processing user input
-			caller.isProcessingResponse = true;
+			// Don't mark as processing immediately - wait for user to finish speaking
+			// Only mark as processing if AI hasn't responded recently
+			const timeSinceLastResponse = caller.lastUserSpeechTime ? now - caller.lastUserSpeechTime : 0;
+			if (timeSinceLastResponse > 1000) {
+				caller.isProcessingResponse = false; // Reset if enough time has passed
+			}
 
 			// Forward audio to AI with enhanced context awareness
 			try {
@@ -405,7 +443,7 @@ wss.on('connection', async (ws, req) => {
 					}
 				});
 				
-				console.log(`✓ Audio forwarded to AI for ${callerId}`);
+				console.log(`✓ Audio forwarded to AI for ${callerId} (debounced at ${MIN_AUDIO_INTERVAL}ms intervals)`);
 			} catch (error) {
 				console.error(`✗ Error forwarding audio for ${callerId}:`, error);
 				caller.isProcessingResponse = false;
