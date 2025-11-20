@@ -30,7 +30,9 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
-
+app.get('/phone', (req, res) => {
+	res.sendFile(path.join(process.cwd(), 'public', 'phone', 'phone.html'));
+});
 
 const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
 const apiKey = process.env.GEMINI_API_KEY;
@@ -74,6 +76,7 @@ wss.on('connection', async (ws) => {
 		},
 		config: config
 	});
+
 	ws.on('close', () => session.close());
 
 	ws.on('message', async (data) => {
