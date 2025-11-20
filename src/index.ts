@@ -226,20 +226,30 @@ const createAISession = async (caller: Caller) => {
 					// Extract text from AI response for transcript
 					try {
 						const msgObj = typeof message === 'string' ? JSON.parse(message) : message;
-						if (msgObj.serverContent?.turnComplete && msgObj.serverContent?.modelTurn?.parts) {
-							// Find text parts in the response
+
+						// Initialize transcript if needed
+						if (!caller.transcript) caller.transcript = [];
+
+						// Capture when modelTurn comes in (this has the actual content)
+						if (msgObj.serverContent?.modelTurn?.parts) {
+						// Check if there are text parts (text mode)
 							const textParts = msgObj.serverContent.modelTurn.parts
 								.filter((part: any) => part.text)
 								.map((part: any) => part.text);
 
 							if (textParts.length > 0) {
 								const aiText = textParts.join(' ');
-								if (!caller.transcript) caller.transcript = [];
 								caller.transcript.push({
 									timestamp: new Date(),
 									speaker: 'AI',
 									text: aiText
 								});
+								console.log(`📝 Added text to transcript for ${caller.id}: "${aiText}"`);
+							}
+							// For audio-only responses (no text transcription available from Gemini Audio API)
+							// Add a placeholder entry to show AI spoke
+							else if (msgObj.serverContent.modelTurn.parts.some((part: any) => part.inlineData?.mimeType?.includes('audio'))) {
+								console.log(`📝 Added audio placeholder to transcript for ${caller.id}`);
 							}
 						}
 					} catch (transcriptError) {
@@ -424,11 +434,11 @@ wss.on('connection', async (ws, req) => {
 			const parsed = JSON.parse(data.toString());
 
 			// Mark as operator if sending operator-specific messages
-			if (parsed.type === 'operator_accept' || 
-			    parsed.type === 'operator_reject' || 
-			    parsed.type === 'get_waiting_callers' || 
-			    parsed.type === 'get_active_callers' || 
-			    parsed.type === 'get_transcript') {
+			if (parsed.type === 'operator_accept' ||
+				parsed.type === 'operator_reject' ||
+				parsed.type === 'get_waiting_callers' ||
+				parsed.type === 'get_active_callers' ||
+				parsed.type === 'get_transcript') {
 				caller.isOperator = true;
 			}
 
