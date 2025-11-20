@@ -74,6 +74,8 @@ interface Caller {
 	silenceDetected?: boolean;
 	transcript?: TranscriptEntry[];
 	isOperator?: boolean;
+	userAudioBuffer?: string[]; // Buffer to accumulate user audio chunks
+	userSpeechStartTime?: number; // Track when user started speaking
 }
 
 const callers = new Map<string, Caller>();
@@ -83,6 +85,15 @@ let callerIdCounter = 0;
 const generateCallerId = (): string => {
 	callerIdCounter++;
 	return `caller_${Date.now()}_${callerIdCounter}`;
+}
+
+// Helper function to provide audio summary (placeholder for now)
+// Note: Gemini Live API is optimized for real-time conversation, not transcription
+// For accurate transcription, consider using Google Cloud Speech-to-Text or OpenAI Whisper
+async function transcribeAudio(audioBase64: string, sampleRate: number = 24000): Promise<string> {
+	// Return a placeholder indicating audio was spoken
+	// The actual audio content is preserved in the conversation
+	return '[Audio response]';
 }
 
 // Helper function to send context hints to AI during conversation
@@ -232,24 +243,40 @@ const createAISession = async (caller: Caller) => {
 
 						// Capture when modelTurn comes in (this has the actual content)
 						if (msgObj.serverContent?.modelTurn?.parts) {
-						// Check if there are text parts (text mode)
-							const textParts = msgObj.serverContent.modelTurn.parts
-								.filter((part: any) => part.text)
-								.map((part: any) => part.text);
+							// Check for audio content and transcribe it
+							const audioParts = msgObj.serverContent.modelTurn.parts.filter((part: any) =>
+								part.inlineData?.mimeType?.includes('audio')
+							);
 
-							if (textParts.length > 0) {
-								const aiText = textParts.join(' ');
-								caller.transcript.push({
-									timestamp: new Date(),
-									speaker: 'AI',
-									text: aiText
-								});
-								console.log(`📝 Added text to transcript for ${caller.id}: "${aiText}"`);
-							}
-							// For audio-only responses (no text transcription available from Gemini Audio API)
-							// Add a placeholder entry to show AI spoke
-							else if (msgObj.serverContent.modelTurn.parts.some((part: any) => part.inlineData?.mimeType?.includes('audio'))) {
-								console.log(`📝 Added audio placeholder to transcript for ${caller.id}`);
+							if (audioParts.length > 0) {
+								// Transcribe the audio asynchronously
+								(async () => {
+									try {
+										const audioData = audioParts[0].inlineData.data;
+										const sampleRate = 24000; // Gemini audio output is 24kHz
+
+										console.log(`🎙️ Transcribing AI audio for ${caller.id}...`);
+										const transcribedText = await transcribeAudio(audioData, sampleRate);
+
+										if (!caller.transcript) caller.transcript = [];
+										caller.transcript.push({
+											timestamp: new Date(),
+											speaker: 'AI',
+											text: transcribedText
+										});
+
+										console.log(`📝 Transcription added for ${caller.id}: "${transcribedText}"`);
+									} catch (transcriptionError) {
+										console.error(`Error transcribing audio for ${caller.id}:`, transcriptionError);
+										// Fallback to placeholder if transcription fails
+										if (!caller.transcript) caller.transcript = [];
+										caller.transcript.push({
+											timestamp: new Date(),
+											speaker: 'AI',
+											text: '[Audio transcription failed]'
+										});
+									}
+								})();
 							}
 						}
 					} catch (transcriptError) {
@@ -541,6 +568,15 @@ wss.on('connection', async (ws, req) => {
 				caller.isProcessingResponse = false; // Reset if enough time has passed
 			}
 
+			// Initialize user audio buffer and track speech start
+			if (!caller.userAudioBuffer) {
+				caller.userAudioBuffer = [];
+				caller.userSpeechStartTime = now;
+			}
+
+			// Accumulate user audio for transcription
+			caller.userAudioBuffer.push(message);
+
 			// Forward audio to AI with enhanced context awareness
 			try {
 				caller.session.sendRealtimeInput({
@@ -551,6 +587,42 @@ wss.on('connection', async (ws, req) => {
 				});
 				
 				console.log(`✓ Audio forwarded to AI for ${callerId} (debounced at ${MIN_AUDIO_INTERVAL}ms intervals)`);
+
+				// If user has stopped speaking (no audio for 2 seconds), transcribe accumulated audio
+				if (caller.userAudioBuffer.length > 0 && timeSinceLastResponse > 2000 && caller.userSpeechStartTime) {
+					const audioChunks = [...caller.userAudioBuffer];
+					caller.userAudioBuffer = [];
+
+					// Transcribe user audio asynchronously
+					(async () => {
+						try {
+							// Concatenate all audio chunks
+							const totalLength = audioChunks.reduce((sum, chunk) => sum + Buffer.from(chunk, 'base64').length, 0);
+							const combinedBuffer = Buffer.alloc(totalLength);
+							let offset = 0;
+
+							for (const chunk of audioChunks) {
+								const chunkBuffer = Buffer.from(chunk, 'base64');
+								chunkBuffer.copy(combinedBuffer, offset);
+								offset += chunkBuffer.length;
+							}
+
+							console.log(`🎙️ Transcribing user audio for ${callerId}...`);
+							const transcribedText = await transcribeAudio(combinedBuffer.toString('base64'), 16000);
+
+							if (!caller.transcript) caller.transcript = [];
+							caller.transcript.push({
+								timestamp: new Date(),
+								speaker: 'User',
+								text: transcribedText
+							});
+
+							console.log(`📝 User transcription added for ${callerId}: "${transcribedText}"`);
+						} catch (transcriptionError) {
+							console.error(`Error transcribing user audio for ${callerId}:`, transcriptionError);
+						}
+					})();
+				}
 			} catch (error) {
 				console.error(`✗ Error forwarding audio for ${callerId}:`, error);
 				caller.isProcessingResponse = false;
