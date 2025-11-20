@@ -70,8 +70,73 @@ const generateCallerId = (): string => {
 	return `caller_${Date.now()}_${callerIdCounter}`;
 }
 
+// Trigger AI to speak with enhanced context
+const triggerAIIntroduction = (caller: Caller) => {
+	if (!caller.session) {
+		console.error(`Cannot trigger AI introduction: No session for ${caller.id}`);
+		return;
+	}
+
+	// Get current time context
+	const now = new Date();
+	const timeOfDay = now.getHours() < 12 ? 'morning' : now.getHours() < 18 ? 'afternoon' : 'evening';
+	const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+	const waitTimeSeconds = Math.round((Date.now() - caller.connectedAt.getTime()) / 1000);
+
+	// Determine greeting style based on wait time
+	let waitAcknowledgment = '';
+	if (waitTimeSeconds < 10) {
+		waitAcknowledgment = 'Thank you for calling';
+	} else if (waitTimeSeconds < 30) {
+		waitAcknowledgment = 'Thank you for your patience';
+	} else if (waitTimeSeconds < 60) {
+		waitAcknowledgment = 'Thank you for waiting';
+	} else {
+		waitAcknowledgment = 'Thank you very much for your patience during the wait';
+	}
+
+	// Build rich context prompt
+	const contextInfo = [
+		`Current time: ${timeOfDay} on ${dayOfWeek}`,
+		`Caller ID: ${caller.id}`,
+		caller.name ? `Caller name: ${caller.name}` : null,
+		caller.phoneNumber ? `Phone number: ${caller.phoneNumber}` : null,
+		`Wait time: ${waitTimeSeconds} seconds`,
+	].filter(Boolean).join('\n');
+
+	const introPrompt = `[SYSTEM CONTEXT]
+${contextInfo}
+
+[INSTRUCTION]
+You are now connected to a live customer call. Please:
+
+1. Start with a warm, natural greeting appropriate for ${timeOfDay}
+2. ${waitAcknowledgment}
+3. Introduce yourself as AuraGuard, your company CentriX, and mention you support NexLink Solutions
+4. Express genuine readiness to help
+5. Ask an open-ended question: "How may I assist you today?" or "What brings you to us today?"
+
+Guidelines:
+- Speak naturally as if in a real phone conversation
+- Use a warm, professional, and empathetic tone
+- Keep the introduction brief (15-20 seconds)
+- Make the customer feel valued and heard
+- Be ready to listen actively after your introduction
+
+Begin speaking now.`;
+
+	caller.session.sendRealtimeInput({
+		text: introPrompt
+	});
+
+	console.log(`✓ AI introduction triggered for ${caller.id} (waited ${waitTimeSeconds}s)`);
+}
+
 // Create AI session for a caller
 const createAISession = async (caller: Caller) => {
+	// Add flag to track if AI has introduced itself
+	(caller as any).aiHasIntroduced = false;
+
 	const session = await ai.live.connect({
 		model: model,
 		callbacks: {
@@ -128,14 +193,11 @@ const acceptCaller = async (callerId: string) => {
 			message: 'Your call has been accepted. You are now connected to AI.'
 		}));
 
-		// Send initial greeting prompt to AI to introduce itself
+		// Trigger AI introduction with enhanced context after brief delay
+		// The delay allows audio systems to fully initialize
 		setTimeout(() => {
-			if (caller.session) {
-				caller.session.sendRealtimeInput({
-					text: "Please introduce yourself to the caller. Say hello and let them know you're ready to assist them with their NexLink services."
-				});
-			}
-		}, 500);
+			triggerAIIntroduction(caller);
+		}, 800); // Increased to 800ms for better audio system readiness
 
 		console.log(`Caller ${callerId} accepted and connected to AI`);
 		return true;
@@ -265,6 +327,17 @@ wss.on('connection', async (ws, req) => {
 		// Only forward audio if caller is connected to AI
 		if (caller.status === 'connected' && caller.session) {
 			const message = data.toString();
+
+			// Optional: Trigger AI introduction on first user speech instead of auto-trigger
+			// Uncomment the following block to enable this behavior:
+			/*
+			if (!(caller as any).aiHasIntroduced) {
+				(caller as any).aiHasIntroduced = true;
+				triggerAIIntroduction(caller);
+				console.log(`AI introduction triggered by user speech for ${callerId}`);
+			}
+			*/
+
 			caller.session.sendRealtimeInput({
 				audio: {
 					data: message,
