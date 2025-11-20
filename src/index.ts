@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'phone', 'phone.html'));
 });
 app.get('/test', (req, res) => {
-	res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+	res.sendFile(path.join(process.cwd(), 'public', 'test.html'));
 });
 app.get('/operator', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'public', 'operator', 'operator.html'));

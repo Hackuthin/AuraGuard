@@ -253,6 +253,15 @@
 				background: rgba(255, 255, 255, 0.15);
 			}
 
+			.mute-icon {
+				background: rgba(255, 255, 255, 0.15);
+				transition: all 0.3s ease;
+			}
+
+			.mute-icon.active {
+				background: #ff3b30;
+			}
+
 			.call-control-icon svg {
 				width: clamp(28px, 7vw, 36px);
 				height: clamp(28px, 7vw, 36px);
@@ -523,13 +532,20 @@
 				</div>
 
 				<div class="call-controls">
-					<button class="call-control-btn">
-						<div class="call-control-icon record-icon">
-							<svg viewBox="0 0 24 24">
-								<circle cx="12" cy="12" r="8" />
+					<button class="call-control-btn" id="muteBtn" onclick="toggleMute()">
+						<div class="call-control-icon mute-icon" id="muteIcon">
+							<svg viewBox="0 0 24 24" id="muteSvg">
+								<!-- Unmuted microphone icon (default) -->
+								<path id="micOnPath" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h4v2H8v-2h4v-3.07z"/>
+								<!-- Muted microphone icon (hidden by default) -->
+								<g id="micOffGroup" style="display: none;">
+									<path d="M15 11c0 1.66-1.34 3-3 3-.23 0-.44-.03-.65-.08l-.21-.07c-.15-.04-.28-.09-.42-.15L4.27 7.27l-.94.94L9 13.88v.12c0 1.66 1.34 3 3 3 .24 0 .47-.03.7-.09l-.27.09c-.14.04-.29.07-.43.09V19h4v2H8v-2h4v-3.07c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6 .79 0 1.54-.15 2.24-.43l1.43 1.43c-.86.49-1.85.79-2.91.93L15 14.12V11z"/>
+									<path d="M19 11h-2c0-.17-.01-.33-.03-.49l2.03 2.03c0-.18 0-.36 0-.54zM12 5c1.66 0 3 1.34 3 3v2.17l2 2V5c0-2.76-2.24-5-5-5-2.53 0-4.6 1.88-4.93 4.32L9.17 6.4C9.58 5.56 10.72 5 12 5z"/>
+									<path d="M4.27 3L3 4.27l18 18L22.73 21 4.27 3z"/>
+								</g>
 							</svg>
 						</div>
-						<span class="call-control-label">Record</span>
+						<span class="call-control-label" id="muteLabel">Mute</span>
 					</button>
 
 					<button class="call-control-btn" onclick="endCall()">
@@ -563,6 +579,7 @@
 			let audioContext = null;
 			let mediaStream = null;
 			let isRecording = false;
+			let isMuted = false; // Track mute state
 
 			// Audio playback queue
 			let audioQueue = [];
@@ -925,13 +942,16 @@
 
 							// Check if there's actual audio (not just silence)
 							const hasAudio = checkForAudio(inputData);
-							updateMicIndicator(hasAudio);
+							updateMicIndicator(hasAudio && !isMuted);
 
-							const pcmData = convertFloat32ToInt16(inputData);
-							const base64Data = arrayBufferToBase64(
-								pcmData.buffer
-							);
-							ws.send(base64Data);
+							// Only send audio if not muted
+							if (!isMuted) {
+								const pcmData = convertFloat32ToInt16(inputData);
+								const base64Data = arrayBufferToBase64(
+									pcmData.buffer
+								);
+								ws.send(base64Data);
+							}
 						}
 					};
 
@@ -959,6 +979,35 @@
 
 				isRecording = false;
 				console.log("Audio capture stopped");
+			}
+
+			// Toggle mute/unmute
+			function toggleMute() {
+				isMuted = !isMuted;
+				
+				const muteIcon = document.getElementById('muteIcon');
+				const muteLabel = document.getElementById('muteLabel');
+				const micOnPath = document.getElementById('micOnPath');
+				const micOffGroup = document.getElementById('micOffGroup');
+				
+				if (isMuted) {
+					// Muted state
+					muteIcon.classList.add('active');
+					muteLabel.textContent = 'Unmute';
+					micOnPath.style.display = 'none';
+					micOffGroup.style.display = 'block';
+					console.log('🔇 Microphone muted');
+				} else {
+					// Unmuted state
+					muteIcon.classList.remove('active');
+					muteLabel.textContent = 'Mute';
+					micOnPath.style.display = 'block';
+					micOffGroup.style.display = 'none';
+					console.log('🔊 Microphone unmuted');
+				}
+				
+				// Update mic indicator to reflect mute state
+				updateMicIndicator(false);
 			}
 
 			// Convert Float32 to Int16 PCM
@@ -1091,6 +1140,11 @@
 
 				stopAudioCapture();
 
+				// Reset mute state
+				if (isMuted) {
+					toggleMute();
+				}
+
 				setTimeout(() => {
 					// Could redirect or show call summary
 					console.log("Call ended. Call ID:", callerId);
@@ -1104,6 +1158,11 @@
 				// Reset state
 				callerId = null;
 				callStatus = "disconnected";
+
+				// Reset mute state
+				if (isMuted) {
+					toggleMute();
+				}
 
 				// Hide the call again button
 				const callAgainBtn = document.getElementById("callAgainBtn");
