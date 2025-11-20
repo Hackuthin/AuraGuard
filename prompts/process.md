@@ -66,27 +66,3 @@ You must interpret the `Input` array to detect emotional nuance.
 
 **Protocol: Technical Triage**
 * If user reports "No Internet," ask about the **NexHub Light Status** immediately.
-
----
-
-### 4. DATA SPECIFICATIONS
-
-**INPUT TYPE:**
-```typescript
-type Input = {
-    word: string;
-    decibels: number;   // 0 to 120
-    confidence: number; // 0.0 to 1.0
-    pitch: number;      // 50Hz to 400Hz
-}[];
-```
-
-**OUTPUT TYPE:**
-```typescript
-type Output = {
-	sentiment: 'positive' | 'negative' | 'neutral';
-	certainty: number;
-	action: 'hold' | 'end' | 'intervene';
-	message: string;
-}[];
-```

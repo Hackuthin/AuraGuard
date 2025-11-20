@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraGuard - AI Voice Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ AuraGuard</h1>
+            <p class="subtitle">AI Voice Assistant</p>
+        </header>
+
+        <main>
+            <div class="status-card">
+                <div class="status-indicator" id="statusIndicator">
+                    <div class="pulse"></div>
+                </div>
+                <p class="status-text" id="statusText">Disconnected</p>
+            </div>
+
+            <div class="controls">
+                <button id="connectBtn" class="btn btn-primary">
+                    <span class="btn-icon">🔌</span>
+                    Connect
+                </button>
+                <button id="startBtn" class="btn btn-success" disabled>
+                    <span class="btn-icon">🎤</span>
+                    Start Recording
+                </button>
+                <button id="stopBtn" class="btn btn-danger" disabled>
+                    <span class="btn-icon">⏹️</span>
+                    Stop Recording
+                </button>
+            </div>
+
+            <div class="visualization">
+                <canvas id="visualizer"></canvas>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-item">
+                    <span class="info-label">Recording:</span>
+                    <span class="info-value" id="recordingStatus">Inactive</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Connection:</span>
+                    <span class="info-value" id="connectionStatus">Not connected</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Audio Level:</span>
+                    <span class="info-value" id="audioLevel">0%</span>
+                </div>
+            </div>
+
+            <div class="log-panel">
+                <h3>Activity Log</h3>
+                <div class="log-content" id="logContent">
+                    <p class="log-entry">Ready to connect...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Google Gemini AI</p>
+        </footer>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>
